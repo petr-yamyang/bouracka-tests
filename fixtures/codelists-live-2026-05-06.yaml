@@ -1,0 +1,417 @@
+# Bouračka — Live-captured codelists from DEMO walk 2026-05-06
+# ─────────────────────────────────────────────────────────────────────────────
+# Source : Claude in Chrome live walk on demo.bouracka.cz, 2026-05-06 10:30-10:45 CET
+# Status : Tier 2a evidence; supersedes the empty `values: []` rows in
+#          fixtures/codelists.yaml where overlapping (cross-referenced below).
+# Provenance: every block records the API endpoint that returned the data.
+# ─────────────────────────────────────────────────────────────────────────────
+
+meta:
+  schema_version: 0.1.0
+  capture_session: CP-SUPIN-04 STEP 10 live-walk
+  capture_method: fetch from demo.bouracka.cz/api/enumerations/* + DOM scrape of dropdown options
+  status: live-captured
+  total_codelists: 5
+  populated: 5
+
+codelists:
+
+  - id: CL-LIVE-INSURANCE
+    crossref: CL-POJISTOVNY (in fixtures/codelists.yaml)
+    name_cs: Pojišťovny — povinné ručení
+    name_en: Insurance companies (motor third-party liability)
+    referenced_by_field_def: [F-104, F-108]
+    api_endpoint: GET /api/enumerations/insuranceCompanies
+    response_count: 13
+    response_schema:
+      code: string  # uppercase ASCII identifier (e.g. ALLIANZ, KOOPERATIVA)
+      name: string  # human display name
+      description: string  # IČO (Czech company ID)
+      email: string  # claims-handling email
+      contact: string  # claims-handling phone
+      link: string  # online claim-form URL
+    values:
+      - {code: ALLIANZ,             name: "Allianz pojišťovna, a. s.",                                     ico: "47115971", email: "regresy@allianz.cz",        phone: "241170000"}
+      - {code: CESKA_PODNIKATELSKA, name: "Česká podnikatelská pojišťovna, a. s., Vienna Insurance Group", ico: "63998530", email: "likvidace@cpp.cz",          phone: "266799850"}
+      - {code: CSOB_POJISTOVNA,     name: "ČSOB Pojišťovna, a. s., člen holdingu ČSOB",                    ico: "45534306", email: "zdn@csobpoj.cz",           phone: "266799810"}
+      - {code: DIRECT,              name: "Direct pojišťovna, a. s.",                                      ico: "25073958", email: "info@direct.cz",           phone: "291291291"}
+      - {code: GENERALI_CESKA,      name: "Generali Česká pojišťovna, a. s.",                              ico: "45272956", email: "SkodyOdCKP@generaliceska.cz", phone: "221586666"}
+      - {code: HASICSKA_VZAJEMNA,   name: "Hasičská vzájemná pojišťovna, a. s.",                           ico: "46973451", email: "skody@hvp.cz",             phone: "272101062"}
+      - {code: KOOPERATIVA,         name: "Kooperativa pojišťovna, a. s., Vienna Insurance Group",         ico: "47116617", email: "podatelna@koop.cz",        phone: "266799820"}
+      - {code: LEASEPLAN,           name: "Euro Insurances DAC",                                           ico: "222618",   email: "",                          phone: "221586836"}
+      - {code: PILLOW,              name: "Pillow pojišťovna, a. s.",                                      ico: "4257111",  email: "skoda@pillow.cz",          phone: "295562339"}
+      - {code: POJISTOVNA_VZP,      name: "Pojišťovna VZP, a. s.",                                         ico: "27116913", email: "likvidaceauto@pvzp.cz",    phone: "261104123"}
+      - {code: SLAVIA,              name: "Slavia pojišťovna, a. s.",                                      ico: "60197501", email: "bouracka@slavia-pojistovna.cz", phone: "255790260"}
+      - {code: UNIQA,               name: "UNIQA pojišťovna, a. s.",                                       ico: "49240480", email: "hlaseni.pu@uniqa.cz",      phone: "246059444"}
+      - {code: OTHER,               name: "Neznámá pojišťovna",                                            ico: "",         email: "",                          phone: ""}
+
+  - id: CL-LIVE-LICENSE-CATEGORIES
+    crossref: CL-RP-SKUPINY (in fixtures/codelists.yaml)
+    name_cs: Skupiny řidičských oprávnění
+    name_en: Driving-license categories
+    referenced_by_field_def: [F-068]
+    capture_method: DOM scrape of MUI Autocomplete dropdown
+    api_endpoint_protected: GET /api/enumerations/licenseCategories  # returns 403 — codelist is loaded only as part of bundle, not via REST
+    response_count: 17
+    values:
+      - {code: AM,  label_cs: "AM",  notes: "Mopedy"}
+      - {code: A1,  label_cs: "A1",  notes: "Lehké motocykly do 125 cm³"}
+      - {code: A2,  label_cs: "A2",  notes: "Motocykly do 35 kW"}
+      - {code: A,   label_cs: "A",   notes: "Motocykly bez omezení"}
+      - {code: B1,  label_cs: "B1",  notes: "Čtyřkolky"}
+      - {code: B,   label_cs: "B",   notes: "Osobní automobily"}
+      - {code: C1,  label_cs: "C1",  notes: "Nákladní vozidla 3,5–7,5 t"}
+      - {code: C,   label_cs: "C",   notes: "Nákladní vozidla nad 7,5 t"}
+      - {code: D1,  label_cs: "D1",  notes: "Autobusy do 16 osob"}
+      - {code: D,   label_cs: "D",   notes: "Autobusy bez omezení"}
+      - {code: BE,  label_cs: "BE",  notes: "B + těžký přívěs"}
+      - {code: C1E, label_cs: "C1E", notes: "C1 + těžký přívěs"}
+      - {code: CE,  label_cs: "CE",  notes: "C + těžký přívěs"}
+      - {code: D1E, label_cs: "D1E", notes: "D1 + těžký přívěs"}
+      - {code: DE,  label_cs: "DE",  notes: "D + těžký přívěs"}
+      - {code: T,   label_cs: "T",   notes: "Traktory a samojízdné stroje"}
+      - {code: B96, label_cs: "B96", notes: "B + jízdní souprava do 4250 kg"}
+
+  - id: CL-LIVE-DAMAGE-ZONES
+    crossref: CL-POSKOZENI-CASTI (in fixtures/codelists.yaml)
+    name_cs: Poškozené části vozidla
+    name_en: Damaged vehicle zones
+    referenced_by_field_def: [F-078, F-079]
+    capture_method: DOM scrape of damage-zones checkbox grid
+    response_count: 9  # 8 zones + 1 "no damage" toggle
+    values:
+      - {code: FRONT_LEFT,  label_cs: "Levá přední",   diagram_position: "FL"}
+      - {code: FRONT,       label_cs: "Přední",        diagram_position: "F"}
+      - {code: FRONT_RIGHT, label_cs: "Pravá přední",  diagram_position: "FR"}
+      - {code: LEFT,        label_cs: "Levý bok",      diagram_position: "L"}
+      - {code: RIGHT,       label_cs: "Pravý bok",     diagram_position: "R"}
+      - {code: REAR_LEFT,   label_cs: "Levá zadní",    diagram_position: "RL"}
+      - {code: REAR,        label_cs: "Zadní",         diagram_position: "R-rear"}
+      - {code: REAR_RIGHT,  label_cs: "Pravá zadní",   diagram_position: "RR"}
+      - {code: NONE,        label_cs: "Vozidlo nebylo poškozeno", diagram_position: "n/a", notes: "mutually exclusive with the 8 zones"}
+
+  - id: CL-LIVE-MOVEMENT
+    crossref: CL-DEFINICE-POHYBU (in fixtures/codelists.yaml)
+    name_cs: Definice pohybů vozidla v době nehody
+    name_en: Vehicle movement at time of accident
+    referenced_by_field_def: [F-076, F-077]
+    capture_method: DOM scrape of movement-radio-list
+    response_count: 18
+    notes: |
+      The European-Accident-Statement §13 "Manoeuvre" 17-box checklist plus
+      one Czech-specific extra ("nedalo přednost v jízdě" = failed to yield).
+      Single-select per participant per accident.
+    values:
+      - {code: STOPPED_PARKED,    label_cs: "stálo, bylo zaparkováno"}
+      - {code: STARTING,          label_cs: "rozjíždělo se"}
+      - {code: IN_MOTION,         label_cs: "bylo v pohybu"}
+      - {code: STOPPING,          label_cs: "zastavovalo"}
+      - {code: EXITING_PRIVATE,   label_cs: "vyjíždělo z parkoviště, soukromého pozemku, polní cesty"}
+      - {code: TURNING_TO_PRIVATE,label_cs: "odbočovalo na parkoviště, soukromý pozemek, polní cestu"}
+      - {code: ENTERING_ROUNDABT, label_cs: "vjíždělo do kruhového objezdu"}
+      - {code: IN_ROUNDABOUT,     label_cs: "jelo v kruhovém objezdu"}
+      - {code: REAR_END_SAME_LANE,label_cs: "najelo zezadu při jízdě stejným směrem ve stejném pruhu"}
+      - {code: PARALLEL_OTHER_LANE,label_cs: "jelo souběžně v jiném jízdním pruhu"}
+      - {code: CHANGING_LANE,     label_cs: "měnilo jízdní pruh"}
+      - {code: OVERTAKING,        label_cs: "předjíždělo"}
+      - {code: TURNING_RIGHT,     label_cs: "odbočovalo vpravo"}
+      - {code: TURNING_LEFT,      label_cs: "odbočovalo vlevo"}
+      - {code: REVERSING,         label_cs: "couvalo"}
+      - {code: WRONG_WAY,         label_cs: "jelo v protisměru"}
+      - {code: APPROACHING_RIGHT, label_cs: "přijíždělo zprava"}
+      - {code: NO_YIELD,          label_cs: "nedalo přednost v jízdě"}
+
+  - id: CL-LIVE-VEHICLE-BRANDS
+    crossref: NEW (no analytical-doc skeleton — this is a new codelist not in fixtures/codelists.yaml)
+    name_cs: Značky vozidel
+    name_en: Vehicle brands
+    api_endpoint: GET /api/enumerations/vehicleBrands
+    response_count: 275
+    response_schema:
+      name: string  # uppercase brand name (used as both code and label)
+      models: array of strings  # model names per brand; includes "NEUVEDEN" + "OSTATNÍ" sentinels
+    notes: |
+      Comprehensive Czech-market vehicle catalogue. Every brand has a `models`
+      array; obscure brands list only "NEUVEDEN" + "OSTATNÍ" sentinels; major
+      brands list dozens (e.g. ABARTH = 13 models). Total payload ~32 KB.
+      Loaded once per session, cached client-side.
+      The number 275 is the brand count. Total model count (across all brands)
+      will be enumerated in the next walk via /api/enumerations/vehicleBrands
+      full-payload save.
+    values_brand_names:
+      # All 275 brand names (alphabetical, as returned by API)
+      - ABARTH
+      - AC
+      - ACURA
+      - AERO
+      - AGADOS
+      - AGROSTROJ
+      - AGROZET
+      - AIWAYS
+      - AIXAM
+      - ALFA ROMEO
+      - ALPINA
+      - ALPINE
+      - ALVIS
+      - APRILIA
+      - ARIEL
+      - ARO
+      - ARTEGA
+      - ASIA_MOTORS
+      - ASTON_MARTIN
+      - AUDI
+      - AUSTIN
+      - AUSTIN HEALEY
+      - AUTO UNION
+      - AVIA
+      - BABETTA
+      - BAIC
+      - BALCANCAR
+      - BARKAS
+      - BAVARIA
+      - BENELLI
+      - BENTLEY
+      - BERKHOF
+      - BERTONE
+      - BESKYD
+      - BIZZARRINI
+      - BMW
+      - BOMBARDIER
+      - BORGWARD
+      - BOVA
+      - BREMACH
+      - BRILLIANCE
+      - BSS
+      - BUGATTI
+      - BUICK
+      - BYD
+      - CADILAC
+      - CADILLAC
+      - CAGIVA
+      - CASALINI
+      - CATERHAM
+      - CATERPILLAR
+      - CENNTRO
+      - CITROËN
+      - COBRA
+      - CORVETTE
+      - CUPRA
+      - ČZ
+      - DACIA
+      - DAEWOO
+      - DAEWOO AVIA
+      - DAF
+      - DAIHATSU
+      - DAIMLER
+      - DATSUN
+      - DELAHAYE
+      - DELOREAN
+      - DERBI
+      - DESTA
+      - DETOMASO
+      - DFSK
+      - DODGE
+      - DONKERVOORT
+      - DS AUTOMOBILES
+      - DUCATI
+      - E.GO
+      - ELARIS
+      - ESTRIMA
+      - FACEL
+      - FERRARI
+      - FIAT
+      - FISKER
+      - FORD
+      - GAC
+      - GAPA
+      - GAS
+      - GAZ
+      - GEMBELLA
+      - GENESIS
+      - GILERA
+      - GMC
+      - GRECAV
+      - GWM
+      - HARLEY DAVIDSON
+      - HARTFORD
+      - HEINKEL
+      - HEMANN
+      - HERCULES
+      - HOLDEN
+      - HON
+      - HONDA
+      - HONGQI
+      - HORCH
+      - HUMMER
+      - HUSABERG
+      - HUSQVARNA
+      - HYOSUNG
+      - HYUNDAI
+      - CHATANET
+      - CHEVROLET
+      - CHRYSLER
+      - IFA
+      - IKARUS
+      - INDIAN
+      - INEOS
+      - INFINITI
+      - INVICTA
+      - IRISBUS
+      - ISUZU
+      - IVECO
+      - IŽ
+      - JAC
+      - JAGUAR
+      - JAWA
+      - JCB
+      - JEEP
+      - JIAYUAN
+      - JOHN DEERE
+      - KAROSA
+      - KAWASAKI
+      - KEMPÍK
+      - KENTOYA
+      - KGM
+      - KIA
+      - KOBRAS
+      - KOENIGSEGG
+      - KÖGEL
+      - KORADO
+      - KRONE
+      - KTM
+      - KYMCO
+      - LADA
+      - LAMBERET
+      - LAMBORGHINI
+      - LANCIA
+      - LAND ROVER
+      - LANDWIND
+      - LAVERDA
+      - LAVINA
+      - LDV
+      - LEAPMOTOR
+      - LEVC
+      - LEXUS
+      - LIAZ
+      - LIGIER
+      - LINCOLN
+      - LOTUS
+      - LUBLIN
+      - LUCID
+      - LYNK&CO
+      - MAHINDRA
+      - MAN
+      - MANET
+      - MARO
+      - MASERATI
+      - MAXUS
+      - MAYBACH
+      - MAZDA
+      - MCLAREN
+      - MERCEDES-BENZ
+      - MESSERSCHMITT
+      - MG
+      - MICROCAR
+      - MICROLINO
+      - MINI
+      - MITSUBISHI
+      - MORGAN
+      - MOSKVIČ
+      - MOTO GUZZI
+      - MOTO MORINI
+      - MULTICAR
+      - MV AGUSTA
+      - MZ
+      - NEOPLAN
+      - NEUVEDENA
+      - NIO
+      - NISSAN
+      - NORTON
+      - NSU
+      - OASA
+      - OLDSMOBILE
+      - OLTCIT
+      - OPEL
+      - ORA
+      - OSTATNÍ
+      - PACKARD
+      - PAGANI
+      - PANAV
+      - PEUGEOT
+      - PIAGGIO
+      - PLYMOUTH
+      - POLESTAR
+      - POLONEZ
+      - PONTIAC
+      - PORSCHE
+      - PRAGA
+      - PROTON
+      - PUCH
+      - RENAULT
+      - RILEY
+      - ROLLS-ROYCE
+      - ROVER
+      - RUF
+      - SAAB
+      - SACHS
+      - SANTANA
+      - SATURN
+      - SCANIA
+      - SEAT
+      - SERES
+      - SETRA
+      - SCHMITZ
+      - SCHWARZMÜLLER
+      - SILENCE
+      - SIMCA
+      - SIMSON
+      - SMART
+      - SPEEDART
+      - SPORT JACHT
+      - SPYKER
+      - SSANGYONG
+      - STEYR
+      - STS
+      - STUDEBAKER
+      - SUBARU
+      - SUZUKI
+      - SWM
+      - ŠKODA
+      - TALBOT
+      - TATA
+      - TATRA
+      - TAZ
+      - TECHART
+      - TESLA
+      - TOYOTA
+      - TRABANT
+      - TRAILOR
+      - TRIUMPH
+      - TVR
+      - TYN_E
+      - UAZ
+      - URSUS
+      - VAN HOOL
+      - VARIO
+      - VAZ
+      - VELOREX
+      - VINCENT
+      - VINFAST
+      - VOLHA
+      - VOLKSWAGEN
+      - VOLVO
+      - WARTBURG
+      - WEISMANN
+      - WESTFIELD
+      - WEY
+      - XEV
+      - XPENG
+      - YAMAHA
+      - YUKI
+      - ZASTAVA
+      - ZAZ
+      - ZEEKR
+      - ZETOR
+      - ZHIDOU
+      - ZTS
+      - ŽUK

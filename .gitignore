@@ -1,0 +1,77 @@
+# Dependencies (auto-installed)
+node_modules/
+__pycache__/
+.venv/
+venv/
+
+# Environment / secrets
+.env
+.env.local
+.env.production
+*.pem
+*.key
+config.local.*
+
+# Test outputs (regenerable)
+test-results/
+playwright-report/
+allure-results/
+allure-report/
+fixtures/intel-*/
+
+# Real-data fixtures (PII-adjacent — operator-filled, never commit)
+fixtures/tester-contacts.yaml
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+*.iml
+
+# Build outputs (regenerable from source)
+delivery/*.zip
+delivery/automation-v*/
+delivery/analytical-v*/
+delivery/suite-*/
+
+# Python compiled
+*.pyc
+*.pyo
+
+# Cypress / Playwright caches
+.cypress-cache/
+.cypress/screenshots/
+.cypress/videos/
+ms-playwright/
+
+# Coverage
+coverage/
+.nyc_output/
+
+# OS-specific
+*.lnk
+desktop.ini
+
+# Workspace artifacts NOT to push to public repo
+archive/                                    # superseded analytical/automation snapshots
+delivery/                                   # build outputs (already covered partially above)
+runs/                                       # local test run logs
+bouracka-results-*.zip                      # local test result bundles
+
+# Older Excel TestPlan revisions — keep only latest
+BOURACKA-TESTPLAN-v0.1.xlsx
+BOURACKA-TESTPLAN-v0.2.xlsx
+BOURACKA-TESTPLAN-v0.3.xlsx
+BOURACKA-TESTPLAN-v0.3.1.xlsx
+BOURACKA-TESTPLAN-v0.3.2.xlsx
+BOURACKA-TESTPLAN-v0.4.0.xlsx
+BOURACKA-TESTPLAN-v0.4.1.xlsx
+.~lock.*
+
+# Sensitive — exclude from PUBLIC repo (move to mimt-internal private repo if needed)
+_install/INSTALL-PLAN-SUPNB-v0.1.md         # contains SUPNB001 hostname + petr.zemla user
+_install/SECOPS-COMPONENTS-CS.md             # ČKP SecOps audit doc — internal
+recon/raw/                                  # raw transcripts may contain unredacted operator data

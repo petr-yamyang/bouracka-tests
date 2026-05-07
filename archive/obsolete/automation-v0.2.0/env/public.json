@@ -1,0 +1,29 @@
+{
+  "id": "ENV-PUB",
+  "label": "public",
+  "base_url": "https://www.bouracka.cz",
+  "network_reach": "public",
+  "locale": "cs_CZ",
+  "browser_default": "chromium",
+  "recaptcha_posture": "FULL",
+  "sms_hook_url": null,
+  "smtp_hook_url": null,
+  "registry_stub_url": null,
+  "selectors": {
+    "header_logo_link": "a[href='/']",
+    "header_hamburger": "button[aria-label='Open menu'], button[aria-label='menu']",
+    "primary_cta": "a[href*='/formular'] >> button:has-text('VYPLNIT ZÁZNAM'), button:has-text('VYPLNIT ZÁZNAM')",
+    "wizard_entry_cta": "button:has-text('VYPLNIT ZÁZNAM'), button:has-text('Vyplnit záznam')",
+    "police_call_card_heading": "text=Kdy volat Policii ČR?",
+    "police_call_button_158": "a[href*='158']",
+    "recaptcha_badge": ".grecaptcha-badge, [data-recaptcha]",
+    "faq_category_buttons": "[role='group'][aria-label='Platform'] button",
+    "faq_accordion_buttons": "main button[type='button']"
+  },
+  "expected": {
+    "title_landing_regex": "Bouračka",
+    "gateway_h1_regex": "dopravní nehoda",
+    "police_conditions_count": 7
+  },
+  "notes": "Dev-time only. Never run end-to-end wizard against public — production-protected."
+}

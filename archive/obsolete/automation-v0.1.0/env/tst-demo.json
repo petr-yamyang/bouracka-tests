@@ -1,0 +1,30 @@
+{
+  "id": "ENV-DMO",
+  "label": "tst-demo",
+  "base_url": "https://tst.demo.bouracka.cz",
+  "network_reach": "supin-internal",
+  "locale": "cs_CZ",
+  "browser_default": "chromium",
+  "recaptcha_posture": "BYPASS_TOKEN_OR_DISABLED",
+  "recaptcha_bypass_token": null,
+  "sms_hook_url": null,
+  "sms_fixed_otp": "0000",
+  "smtp_hook_url": null,
+  "registry_stub_url": null,
+  "selectors": {
+    "_INHERIT_FROM": "public.json"
+  },
+  "expected": {
+    "title_landing_regex": "Bouračka",
+    "gateway_h1_regex": "dopravní nehoda",
+    "police_conditions_count": 7,
+    "_relaxed_validation": true,
+    "_pdf_watermark": "DEMO ONLY"
+  },
+  "validation_relaxations": {
+    "spz_format_strict": false,
+    "location_within_cz_required": false,
+    "ocr_auto_fill_required": false
+  },
+  "notes": "Driving-school variant; reduced validation per scope C-5. Per-env expectedVerdict required in TC code."
+}

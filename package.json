@@ -1,0 +1,29 @@
+{
+  "name": "bouracka-tests",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SUPIN/bouracka.cz client-pilot test campaign — Cypress + Playwright primary, TestCafe fallback. CS-first, mobile-first.",
+  "scripts": {
+    "test:playwright": "playwright test --config=playwright/playwright.config.ts",
+    "test:cypress": "cypress run --config-file=cypress/cypress.config.ts",
+    "test:testcafe": "testcafe chrome:headless 'testcafe/tests/**/*.test.ts' --config-file testcafe/.testcaferc.json",
+    "test:all": "npm run test:playwright && npm run test:cypress",
+    "install:browsers": "playwright install chromium",
+    "install:webkit": "playwright install webkit",
+    "install:firefox": "playwright install firefox",
+    "install:cypress": "npm install --no-save cypress@^13.17.0 && npx cypress install"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "exceljs": "^4.4.0",
+    "typescript": "^5.5.4"
+  },
+  "optionalDependencies": {
+    "cypress": "^13.17.0",
+    "testcafe": "^3.7.0"
+  },
+  "license": "UNLICENSED"
+}

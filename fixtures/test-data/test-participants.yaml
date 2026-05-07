@@ -1,0 +1,68 @@
+# Test participants — single source of truth
+# Per CP-SUPIN-05 v0.5.0 Cross-framework data sharing convention.
+# All 4 frameworks (Playwright / Cypress / TestCafe / Selenium) load this file
+# via their respective data-loader helpers. See:
+#   _specs/CROSS-FRAMEWORK-DATA-SHARING-v0.1-CS.md
+
+participants:
+  A:
+    name: "Adam Test"
+    surname: "Demoversen"
+    op_number: "123456789"          # OP — Czech ID; not real
+    rp_number: "AB123456"            # ŘP — driver license; format check target
+    birth_date: "01.01.1990"         # CS format DD.MM.YYYY
+    email: "demo-test-A@example.com"
+    phone: "608000001"
+    phone_prefix: "+420"
+    address_query: "Václavské"       # for ČÚZK RUIAN autocomplete
+    gdpr_consent: true
+    otp_code: "1234"                 # any 4 digits accepted on DEMO
+  A_specimen:
+    # Match Pete's SPECIMEN OP card (test-data-snippets/OP - test ID s/OP1/)
+    # Use this variant when testing zenID OCR happy path — values must align
+    # with what zenID would extract from the SPECIMEN card so manual fallback
+    # doesn't show "OCR mismatch" warning.
+    name: "Mgr."                     # title from card
+    surname: "SPECIMEN"              # MRZ line says SPECIMEN<<VZOR<<<
+    op_number: "998007351"           # MRZ document number
+    birth_number_cs: "816008/0610"   # rodné číslo from card
+    birth_date: "08.10.1981"         # decoded from MRZ 811008
+    sex: "F"
+    address_full: "Pražská 257/54, 400 04 Trmice, okr. Ústí nad Labem"
+    issued_by: "Magistrát města Ústí nad Labem"
+    valid_until: "04.03.2024"        # expiry from MRZ 240304
+    marital_status: "vdaná"
+    photo_paths:
+      - "../../analyticke vstupy/test-data-snippets/OP - test ID s/OP1/20250625_140816.jpg"
+      - "../../analyticke vstupy/test-data-snippets/OP - test ID s/OP1/20250625_140825.jpg"
+      - "../../analyticke vstupy/test-data-snippets/OP - test ID s/OP1/20250625_140834.jpg"
+    intended_for:
+      - "TT-FUNC-003 (Sběr dokumentů — zenID OCR scenario)"
+      - "compare zenID auto-extracted vs manual fallback values"
+  B:
+    name: "Beáta Demova"
+    surname: "Druhá"
+    op_number: "987654321"
+    rp_number: "CD987654"
+    birth_date: "02.02.1985"
+    email: "demo-test-B@example.com"
+    phone: "608000002"
+    phone_prefix: "+420"
+    address_query: "Národní"
+    gdpr_consent: true
+    otp_code: "5678"
+
+# Negative-path data (for ALT-* tests)
+negative_data:
+  bad_rp_number: "INVALID_FORMAT_123"   # ALT-1 ŘP regex rejection
+  invalid_otp: "0000"                    # ALT- (future) OTP failure
+  too_short_phone: "608"                 # validation negative
+  empty_consent: false                   # ALT-4 GDPR negative
+  slovak_prefix: "+421"                  # ALT-5 dropdown discoverability
+
+# Provenance + change tracking
+_meta:
+  version: "v0.1"
+  created_at: "2026-05-07"
+  source: "live recon DEMO Bouracka 2026-05-06; populated initial CP-SUPIN-05"
+  schema_link: "_specs/CROSS-FRAMEWORK-DATA-SHARING-v0.1-CS.md"

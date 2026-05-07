@@ -1,0 +1,118 @@
+{
+  "uuid": "n8-sms-gateway-mock-cp-supin-03",
+  "name": "N8 SMS Gateway — bouracka-tests CP-SUPIN-03",
+  "endpointPrefix": "api/v1/sms",
+  "port": 8025,
+  "hostname": "127.0.0.1",
+  "lastMigration": 28,
+  "routes": [
+    {
+      "uuid": "ping-route",
+      "documentation": "PING heartbeat — gateway availability check (SUT → N8 before transition out of NEW state).",
+      "method": "get",
+      "endpoint": "ping",
+      "responses": [
+        {
+          "uuid": "ping-ok",
+          "rules": [],
+          "rulesOperator": "OR",
+          "statusCode": 200,
+          "label": "PING_OK",
+          "headers": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{ \"status\": \"ok\", \"gateway_id\": \"N8-MOCK-001\", \"timestamp\": \"{{now}}\" }"
+        },
+        {
+          "uuid": "ping-nok",
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "force",
+              "value": "nok",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "statusCode": 503,
+          "label": "PING_NOK (force=nok)",
+          "headers": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{ \"error\": \"gateway_unavailable\", \"code\": \"N8_HEARTBEAT_FAIL\" }"
+        }
+      ]
+    },
+    {
+      "uuid": "send-otp-route",
+      "documentation": "SEND OTP — issue an OTP code to a phone number. Returns a Mockoon-only `otp_for_test` field that the test reads + feeds into the next step.",
+      "method": "post",
+      "endpoint": "send",
+      "responses": [
+        {
+          "uuid": "send-otp-ok",
+          "rules": [],
+          "rulesOperator": "OR",
+          "statusCode": 200,
+          "label": "SEND_OTP_OK",
+          "headers": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{ \"status\": \"queued\", \"message_id\": \"MID-MOCK-{{faker 'random.uuid'}}\", \"otp_for_test\": \"1234\" }"
+        },
+        {
+          "uuid": "send-otp-422",
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "phone",
+              "value": "INVALID",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "statusCode": 422,
+          "label": "SEND_OTP_422_EX_CHYBA",
+          "headers": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{ \"error\": \"N8/2025/01: EX_CHYBA_TELCISLA_NEBO_SMSTEXTU\", \"code\": \"EX_CHYBA\" }"
+        }
+      ]
+    },
+    {
+      "uuid": "validate-otp-route",
+      "documentation": "VALIDATE OTP — verify a submitted OTP. Returns valid:true for `1234`; valid:false otherwise.",
+      "method": "post",
+      "endpoint": "validate",
+      "responses": [
+        {
+          "uuid": "validate-otp-true",
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "code",
+              "value": "1234",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "statusCode": 200,
+          "label": "VALIDATE_OTP_VALID",
+          "headers": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{ \"valid\": true, \"verified_at\": \"{{now}}\" }"
+        },
+        {
+          "uuid": "validate-otp-false",
+          "rules": [],
+          "rulesOperator": "OR",
+          "statusCode": 200,
+          "label": "VALIDATE_OTP_INVALID (default)",
+          "headers": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{ \"valid\": false, \"reason\": \"code_mismatch\" }"
+        }
+      ]
+    }
+  ],
+  "_meta": {
+    "purpose": "Mockoon profile for the N8 SMS Gateway integration (INT-002). Used by CP-SUPIN-03 R1 TCs (TC-CP-001/002/005) when env.sms_gateway_mode='mock'.",
+    "synchro_ref": "SYNCHRO-THINKPAD-CP-SUPIN-03-2026-05-06.md §3.4 step 1",
+    "loopback_only": true,
+    "rotation": "Restart Mockoon CLI to refresh the `otp_for_test` value; default 1234 stays stable across runs."
+  }
+}

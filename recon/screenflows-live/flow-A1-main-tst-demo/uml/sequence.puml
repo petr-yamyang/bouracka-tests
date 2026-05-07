@@ -1,0 +1,163 @@
+@startuml flow-A1-main-tst-demo-sequence
+' ─────────────────────────────────────────────────────────────────────
+' Sequence Diagram — A1 main happy path on DEMO
+' Lifelines: Účastník A | SPA | Bouračka API | RUIAN ČÚZK | Google Maps
+' Source: live network captures 2026-05-06
+' ─────────────────────────────────────────────────────────────────────
+title Bouračka R1 — Sekvenční diagram (A1) DEMO 2026-05-06
+
+actor "Účastník A" as PA
+participant "SPA\n(prohlížeč)" as SPA
+participant "API\n(demo.bouracka.cz/api)" as API
+participant "ČÚZK\n(RUIAN ArcGIS)" as RUIAN
+participant "Google Maps" as MAPS
+
+== Phase 0 — Rozcestník ==
+PA -> SPA : GET /formular/
+SPA -> API : (žádné volání API; statický obsah)
+SPA --> PA : rozcestník + 3 karty
+
+== Phase A — Intro ==
+PA -> SPA : klik "VYPLNIT ZÁZNAM"
+SPA --> PA : /formular/informations
+
+PA -> SPA : klik "Rozumím"
+SPA -> API : POST /api/reports
+API --> SPA : 200 {uuid: r}
+SPA -> API : GET /reports/{r}
+SPA -> API : GET /reports/{r}/completenessStatus
+SPA -> API : GET /reports/{r}/participantsInVerification
+SPA --> PA : /verification
+
+== Phase 1 — Verifikace A ==
+PA -> SPA : telefon A + GDPR + "Odeslat kód"
+SPA -> API : PUT /reports/{r}/reporter
+API --> SPA : 200
+SPA -> API : POST /reports/{r}/participants/{pA}/sendCodeToVerify
+API --> SPA : 200
+note right of API
+  DEMO: žádné SMS
+  PROD: N8 SMS Gateway
+end note
+
+PA -> SPA : OTP "1234" + "Ověřit"
+SPA -> API : POST /reports/{r}/participants/{pA}/verify
+API --> SPA : 200
+
+== Phase 1 — Verifikace B ==
+PA -> SPA : telefon B + "Odeslat kód"
+SPA -> API : POST /reports/{r}/participants
+API --> SPA : 200 {uuid: pB}
+SPA -> API : POST /reports/{r}/participants/{pB}/sendCodeToVerify
+
+PA -> SPA : OTP B + "Ověřit"
+SPA -> API : POST /reports/{r}/participants/{pB}/verify
+API --> SPA : 200
+SPA -> API : POST /api/session/refresh
+SPA --> PA : /verification/success
+
+== Phase 2 — Documents A ==
+PA -> SPA : klik "Vyplnit údaje ručně"
+SPA --> PA : /documents/{pA}/manual?validate=false
+
+loop pro každý keystroke v "Vaše adresa" (≥3 znaky)
+    SPA -> RUIAN : GET .../GeocodeSOE/.../suggest?text={q}
+    RUIAN --> SPA : suggestions[]
+end
+
+PA -> SPA : vybere adresu
+SPA -> RUIAN : GET .../Vyhledavaci_sluzba.../query?adresa={a}&magicKey={k}
+RUIAN --> SPA : full address record
+SPA -> RUIAN : GET .../MapServer/4/query?where=kod={code}
+RUIAN --> SPA : obec name
+
+PA -> SPA : "Potvrdit"
+SPA -> API : PUT /participants/{pA}/participantData
+SPA -> API : PUT /participants/{pA}/email
+SPA -> API : PUT /participants/{pA}/drivingLicense/update
+API --> SPA : 200×3
+SPA --> PA : /documents/{pA}/recap
+
+PA -> SPA : email + "Uložit"
+SPA -> API : PUT /participants/{pA}/email
+SPA -> API : POST /api/session/refresh
+SPA --> PA : /documents/{pB}/...
+
+== Phase 2 — Documents B ==
+note over PA, API : Stejný blok pro B (zkráceno)
+
+== Phase 2.5 — Witnesses ==
+SPA -> API : GET /reports/{r}/witnesses
+PA -> SPA : "Pokračovat bez svědků"
+SPA --> PA : /accident/{pA}
+
+== Phase 3 — Damage A ==
+PA -> SPA : "POKRAČOVAT BEZ FOTOGRAFIÍ"
+PA -> SPA : popis + zóny + "Pokračovat"
+SPA -> API : PUT /participants/{pA}/damage
+SPA -> API : PUT /participants/{pA}/movementDefinition
+SPA --> PA : /accident/{pA}/damage/data
+
+PA -> SPA : SPZ + značka + model
+SPA -> API : GET /enumerations/vehicleBrands
+SPA -> API : GET /enumerations/insuranceCompanies
+PA -> SPA : "Potvrdit" pro vehicle
+SPA -> API : PUT /participants/{pA}/vehicle
+SPA -> API : GET /participants/canRetrieveVehicleAndInsurerData
+PA -> SPA : pojišťovna + "Potvrdit"
+SPA -> API : PUT /participants/{pA}/insurer
+
+== Phase 3 — Damage B ==
+note over PA, API : Stejný blok pro vozidlo B
+
+== Phase 3 — Shared circumstances ==
+SPA --> PA : /accident/circumstances
+PA -> SPA : typ nehody + popis + "Pokračovat"
+SPA -> API : POST /api/session/refresh
+SPA -> API : PUT /circumstances
+SPA --> PA : /situation
+
+PA -> SPA : datum + čas + "jsem na místě" + "Pokračovat"
+SPA -> API : PUT /datetime
+SPA --> PA : /situation/location/manual
+
+opt prohlížeč povolí geolokaci
+    SPA -> SPA : navigator.geolocation timeout
+end
+SPA -> MAPS : GET maps/api/staticmap?key=...&center={lat,lng}
+MAPS --> SPA : PNG mapy
+PA -> SPA : adresa nebo popis + "Pokračovat"
+SPA -> API : PUT /location
+
+PA -> SPA : viník + "Pokračovat"
+SPA -> API : PUT /responsibleParticipant
+SPA --> PA : /summary
+
+== Phase 4 — Summary + Sign ==
+PA -> SPA : zkontroluje + checkbox + "Podepsat záznam o nehodě"
+SPA -> API : POST /confirmation
+SPA -> API : GET /summaryId
+SPA -> API : GET /participantsInSigning
+SPA --> PA : /sign-report
+
+PA -> SPA : "Odeslat kód do sms" (A)
+SPA -> API : POST /participants/{pA}/sendCodeToSign
+PA -> SPA : OTP + "Podepsat"
+SPA -> API : POST /participants/{pA}/sign
+
+PA -> SPA : "Odeslat kód do sms" (B)
+SPA -> API : POST /participants/{pB}/sendCodeToSign
+PA -> SPA : OTP B + "Podepsat"
+SPA -> API : POST /participants/{pB}/sign
+API --> SPA : 200
+SPA --> PA : /success
+
+== Phase 4 — Done ==
+PA -> SPA : "Stáhnout PDF záznam"
+SPA -> SPA : FileSaver.js → blob.saveAs(...)
+note right of SPA
+  DEMO: žádné e-maily (Δ31)
+  PROD: e-mail rozeslání
+end note
+
+@enduml

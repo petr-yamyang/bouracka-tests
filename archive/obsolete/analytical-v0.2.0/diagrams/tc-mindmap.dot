@@ -1,0 +1,119 @@
+digraph TC {
+  graph [layout=twopi, root="center", overlap=false, splines=true,
+         ranksep="1.6 1.4", bgcolor="white",
+         fontname="Arial", fontsize=10, label=<
+<B>Bouračka — TestCases — automation priority</B><BR/>
+<FONT POINT-SIZE="9">
+24 R1 TestCases · 
+colour = priority (A=red — automate first; B=yellow — next; C=green — later) 
+· shape = type (○ happy · ⬡ failure · □ regression)
+</FONT>>, labelloc="t"];
+  node [fontname="Arial", fontsize=9, style="filled,rounded", penwidth=1.5];
+  edge [color="#7F7F7F", arrowhead=none];
+
+  center [label=<<B>Bouračka R1</B><BR/><FONT POINT-SIZE="9">automation backlog</FONT>>,
+          shape=circle, fillcolor="#1F4E79", fontcolor="white",
+          width=1.6, fixedsize=true];
+
+  TT_CP_R1_A1_hub [label=<<B>TT-CP-R1-A1</B><BR/><FONT POINT-SIZE="8">Vstupní brána a SMS-PING (scree…</FONT>>,
+              shape=box, fillcolor="#BDD7EE", color="#1F4E79",
+              style="filled,rounded,bold", penwidth=2];
+  center -> TT_CP_R1_A1_hub;
+  TT_CP_R1_A2_hub [label=<<B>TT-CP-R1-A2</B><BR/><FONT POINT-SIZE="8">Ověření telefonních čísel (scre…</FONT>>,
+              shape=box, fillcolor="#BDD7EE", color="#1F4E79",
+              style="filled,rounded,bold", penwidth=2];
+  center -> TT_CP_R1_A2_hub;
+  TT_CP_R1_B_hub [label=<<B>TT-CP-R1-B</B><BR/><FONT POINT-SIZE="8">Načtení dat řidiče (zenID + AIS…</FONT>>,
+              shape=box, fillcolor="#BDD7EE", color="#1F4E79",
+              style="filled,rounded,bold", penwidth=2];
+  center -> TT_CP_R1_B_hub;
+  TT_CP_R1_C_hub [label=<<B>TT-CP-R1-C</B><BR/><FONT POINT-SIZE="8">SPZ + údaje o vozidle (zenID +…</FONT>>,
+              shape=box, fillcolor="#BDD7EE", color="#1F4E79",
+              style="filled,rounded,bold", penwidth=2];
+  center -> TT_CP_R1_C_hub;
+  TT_CP_R1_D_hub [label=<<B>TT-CP-R1-D</B><BR/><FONT POINT-SIZE="8">Okolnosti, datum, místo, viník,…</FONT>>,
+              shape=box, fillcolor="#BDD7EE", color="#1F4E79",
+              style="filled,rounded,bold", penwidth=2];
+  center -> TT_CP_R1_D_hub;
+  TT_CP_R1_E_hub [label=<<B>TT-CP-R1-E</B><BR/><FONT POINT-SIZE="8">End-to-end orchestrace (cross-a…</FONT>>,
+              shape=box, fillcolor="#BDD7EE", color="#1F4E79",
+              style="filled,rounded,bold", penwidth=2];
+  center -> TT_CP_R1_E_hub;
+  TT_CP_R1_F_hub [label=<<B>TT-CP-R1-F</B><BR/><FONT POINT-SIZE="8">Obálka chyb a ukončení (cross-a…</FONT>>,
+              shape=box, fillcolor="#BDD7EE", color="#1F4E79",
+              style="filled,rounded,bold", penwidth=2];
+  center -> TT_CP_R1_F_hub;
+
+  TC_CP_001 [label=<<B>TC-CP-001</B><BR/><FONT POINT-SIZE="8">PING SMS Gateway — happy</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ NEW</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">happy · Pri A</FONT>>, shape=ellipse,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_A1_hub -> TC_CP_001;
+  TC_CP_002 [label=<<B>TC-CP-002</B><BR/><FONT POINT-SIZE="8">PING SMS Gateway — NOK (Endpage)</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ n/a</FONT><BR/><FONT POINT-SIZE="7" COLOR="#C00000">PING_NOK</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">failure · Pri A</FONT>>, shape=octagon,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_A1_hub -> TC_CP_002;
+  TC_CP_003 [label=<<B>TC-CP-003</B><BR/><FONT POINT-SIZE="8">Ověření telefonu — happy oba účastn…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ IN_PROGRESS_DRIVERS</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">happy · Pri A</FONT>>, shape=ellipse,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_A2_hub -> TC_CP_003;
+  TC_CP_004 [label=<<B>TC-CP-004</B><BR/><FONT POINT-SIZE="8">OTP — vyčerpání pokusů (SMS_CODE_AT…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ ERROR</FONT><BR/><FONT POINT-SIZE="7" COLOR="#C00000">SMS_CODE_ATTEMPTS</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">failure · Pri A</FONT>>, shape=octagon,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_A2_hub -> TC_CP_004;
+  TC_CP_005 [label=<<B>TC-CP-005</B><BR/><FONT POINT-SIZE="8">Telefonní číslo nadužíváno (TELEPHO…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ ERROR</FONT><BR/><FONT POINT-SIZE="7" COLOR="#C00000">TELEPHONE_NUMBER_COUNT</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">failure · Pri A</FONT>>, shape=octagon,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_A2_hub -> TC_CP_005;
+  TC_CP_006 [label=<<B>TC-CP-006</B><BR/><FONT POINT-SIZE="8">SMS Gateway HTTP 422 EX_CHYBA</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ n/a</FONT><BR/><FONT POINT-SIZE="7" COLOR="#C00000">EX_CHYBA</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">failure · Pri B</FONT>>, shape=octagon,
+           fillcolor="#FFD966", color="#1F4E79"];
+  TT_CP_R1_A2_hub -> TC_CP_006;
+  TC_CP_007 [label=<<B>TC-CP-007</B><BR/><FONT POINT-SIZE="8">OTP retry happy (recoverable)</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ IN_PROGRESS_DRIVERS</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">regression · Pri A</FONT>>, shape=box,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_A2_hub -> TC_CP_007;
+  TC_CP_008 [label=<<B>TC-CP-008</B><BR/><FONT POINT-SIZE="8">zenID + AISPOV ROB — happy auto-fill</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ IN_PROGRESS_DRIVERS</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">happy · Pri A</FONT>>, shape=ellipse,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_B_hub -> TC_CP_008;
+  TC_CP_009 [label=<<B>TC-CP-009</B><BR/><FONT POINT-SIZE="8">zenID NOK → manual + AISPOV button…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ IN_PROGRESS_DRIVERS</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">regression · Pri A</FONT>>, shape=box,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_B_hub -> TC_CP_009;
+  TC_CP_010 [label=<<B>TC-CP-010</B><BR/><FONT POINT-SIZE="8">AISPOV NENALEZENO ROB — negativní b…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ IN_PROGRESS_DRIVERS</FONT><BR/><FONT POINT-SIZE="7" COLOR="#C00000">AISPOV_ROB_NENALEZENO</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">failure · Pri A</FONT>>, shape=octagon,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_B_hub -> TC_CP_010;
+  TC_CP_011 [label=<<B>TC-CP-011</B><BR/><FONT POINT-SIZE="8">Camera permission denied → gallery…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ IN_PROGRESS_DRIVERS</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">regression · Pri A</FONT>>, shape=box,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_B_hub -> TC_CP_011;
+  TC_CP_012 [label=<<B>TC-CP-012</B><BR/><FONT POINT-SIZE="8">SPZ scan + AISPOV vehicle — happy</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ IN_PROGRESS_CIRCUMSTA…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">happy · Pri A</FONT>>, shape=ellipse,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_C_hub -> TC_CP_012;
+  TC_CP_013 [label=<<B>TC-CP-013</B><BR/><FONT POINT-SIZE="8">SPZ NOK → gallery upload — recovera…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ IN_PROGRESS_CIRCUMSTA…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">regression · Pri A</FONT>>, shape=box,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_C_hub -> TC_CP_013;
+  TC_CP_014 [label=<<B>TC-CP-014</B><BR/><FONT POINT-SIZE="8">AISPOV vehicle missing — negativní…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ IN_PROGRESS_CIRCUMSTA…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#C00000">AISPOV_VEHICLE_MISSING</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">failure · Pri B</FONT>>, shape=octagon,
+           fillcolor="#FFD966", color="#1F4E79"];
+  TT_CP_R1_C_hub -> TC_CP_014;
+  TC_CP_015 [label=<<B>TC-CP-015</B><BR/><FONT POINT-SIZE="8">Souhrn → SMS-OTP oba řidiči — happy</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ FINISHED</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">happy · Pri A</FONT>>, shape=ellipse,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_D_hub -> TC_CP_015;
+  TC_CP_016 [label=<<B>TC-CP-016</B><BR/><FONT POINT-SIZE="8">Sign-OTP exhaustion — negativní</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ ERROR</FONT><BR/><FONT POINT-SIZE="7" COLOR="#C00000">SIGN_OTP_ATTEMPTS (TB…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">failure · Pri A</FONT>>, shape=octagon,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_D_hub -> TC_CP_016;
+  TC_CP_017 [label=<<B>TC-CP-017</B><BR/><FONT POINT-SIZE="8">Submit timeout retry — recoverable</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ FINISHED</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">regression · Pri A</FONT>>, shape=box,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_D_hub -> TC_CP_017;
+  TC_CP_018 [label=<<B>TC-CP-018</B><BR/><FONT POINT-SIZE="8">End-to-end happy NEW → FINISHED</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ FINISHED</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">happy · Pri A</FONT>>, shape=ellipse,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_E_hub -> TC_CP_018;
+  TC_CP_019 [label=<<B>TC-CP-019</B><BR/><FONT POINT-SIZE="8">Outage active — CTA disabled</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ n/a</FONT><BR/><FONT POINT-SIZE="7" COLOR="#C00000">OUTAGE_ACTIVE</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">failure · Pri A</FONT>>, shape=octagon,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_F_hub -> TC_CP_019;
+  TC_CP_020 [label=<<B>TC-CP-020</B><BR/><FONT POINT-SIZE="8">Mid-wizard interlock self-disclosur…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ ERROR</FONT><BR/><FONT POINT-SIZE="7" COLOR="#C00000">ELIGIBILITY_INTERLOCK</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">failure · Pri A</FONT>>, shape=octagon,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_F_hub -> TC_CP_020;
+  TC_CP_021 [label=<<B>TC-CP-021</B><BR/><FONT POINT-SIZE="8">Okolnosti nehody — změna pořadí voz…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ IN_PROGRESS_CIRCUMSTA…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">regression · Pri B</FONT>>, shape=box,
+           fillcolor="#FFD966", color="#1F4E79"];
+  TT_CP_R1_D_hub -> TC_CP_021;
+  TC_CP_022 [label=<<B>TC-CP-022</B><BR/><FONT POINT-SIZE="8">Místo nehody — větvení GPS vs manuá…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ IN_PROGRESS_CIRCUMSTA…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">regression · Pri B</FONT>>, shape=box,
+           fillcolor="#FFD966", color="#1F4E79"];
+  TT_CP_R1_D_hub -> TC_CP_022;
+  TC_CP_023 [label=<<B>TC-CP-023</B><BR/><FONT POINT-SIZE="8">Určení viníka nehody — všechny radi…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ IN_PROGRESS_CIRCUMSTA…</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">regression · Pri B</FONT>>, shape=box,
+           fillcolor="#FFD966", color="#1F4E79"];
+  TT_CP_R1_D_hub -> TC_CP_023;
+  TC_CP_005 [label=<<B>TC-CP-005</B><BR/><FONT POINT-SIZE="8">SMS-OTP odeslání + ověření</FONT><BR/><FONT POINT-SIZE="7" COLOR="#404040">→ IN_PROGRESS_DRIVERS</FONT><BR/><FONT POINT-SIZE="7" COLOR="#7F7F7F">happy · Pri A</FONT>>, shape=ellipse,
+           fillcolor="#F4B084", color="#1F4E79"];
+  TT_CP_R1_A2_hub -> TC_CP_005;
+}

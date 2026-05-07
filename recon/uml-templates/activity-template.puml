@@ -1,0 +1,77 @@
+' UML Activity Diagram — VUP-compliant swim-lane template
+' Bottom-up reconstruction from flow folder.
+' Photo refs in comments per L-WORK-6.
+'
+' Render: java -jar plantuml.jar activity.puml
+
+@startuml activity-template
+
+title <Flow-ID> — Activity Diagram (UML 2.5 swim-lanes)
+
+skinparam backgroundColor #FFFFFF
+skinparam activity {
+  BackgroundColor #BDD7EE
+  BorderColor #1F4E79
+  DiamondBackgroundColor #F4B084
+}
+skinparam swimlane {
+  BorderColor #1F4E79
+  TitleBackgroundColor #1F4E79
+  TitleFontColor #FFFFFF
+}
+
+' ── Swim-lanes ─────────────────────────────────────────────────────────
+|#FFF2CC|Účastník|
+start
+:Klik VYPLNIT ZÁZNAM;
+note right: source: photos/IMG_NNNN.jpg
+
+|#BDD7EE|SUT (Bouračka)|
+:Validate eligibility;
+
+|#C6E0B4|INT-002 N8 SMS Gateway|
+:PING /api/v1/sms/ping;
+
+|#BDD7EE|SUT (Bouračka)|
+if (PING OK?) then (yes)
+  :Set accidentReportStatus = NEW;
+  :Render screen 02 — phone input;
+else (no)
+  :Render ERROR.smsGatewayUnavailable endpage;
+  stop
+endif
+
+|#FFF2CC|Účastník|
+:Zadat tel. číslo;
+note right: source: photos/IMG_NNNN.jpg
+:Klik ODESLAT KÓD;
+
+|#C6E0B4|INT-002 N8 SMS Gateway|
+:SEND OTP;
+note right
+  Mock returns otp_for_test=1234
+  Real N8 sends SMS to user phone
+end note
+
+|#FFF2CC|Účastník|
+:Zadat OTP;
+
+|#C6E0B4|INT-002 N8 SMS Gateway|
+:VALIDATE OTP;
+
+|#BDD7EE|SUT (Bouračka)|
+if (Valid?) then (yes)
+  :Mark phone verified;
+  if (Both participants verified?) then (yes)
+    :Set accidentReportStatus = IN_PROGRESS_DRIVERS;
+    stop
+  else (no — loop for participant N)
+  endif
+else (no — retry up to N attempts)
+  if (Attempts > limit?) then (yes)
+    :Set ERROR.SMS_CODE_ATTEMPTS;
+    stop
+  endif
+endif
+
+@enduml

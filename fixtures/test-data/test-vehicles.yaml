@@ -1,0 +1,35 @@
+# Test vehicles — single source of truth
+# Per CP-SUPIN-05 v0.5.0 Cross-framework data sharing convention.
+
+vehicles:
+  A:
+    spz: "1AB 2345"
+    brand: "ŠKODA"             # must match exactly an entry in /api/enumerations/vehicleBrands
+    model: "Octavia"           # autocomplete-driven; brand-dependent list
+    insurer: "Allianz"          # must match /api/enumerations/insuranceCompanies
+    color: "černá"
+    desc: "Levá strana lehce poškozena. Kapota neporušená. Bez zranění."
+  B:
+    spz: "5XY 6789"
+    brand: "VOLKSWAGEN"
+    model: "Golf"
+    insurer: "Kooperativa"
+    color: "stříbrná"
+    desc: "Pravý zadní nárazník odřený. Bez zranění."
+
+# Edge-case vehicles for negative + boundary tests
+edge_cases:
+  unknown_brand:
+    spz: "9ZZ 9999"
+    brand: "AVIA"               # uncommon; tests autocomplete dropdown discoverability
+    model: "A75"
+    insurer: "ČSOB Pojišťovna"
+    color: "modrá"
+
+# Provenance
+_meta:
+  version: "v0.1"
+  created_at: "2026-05-07"
+  source: "live recon DEMO Bouracka 2026-05-06"
+  brand_count_validated: 200      # ALT-7 asserts >=200 brands in /api/enumerations/vehicleBrands
+  insurer_count_validated: 10

@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Bouracka — Bring-up smoke (REST surface) — SoapUI / ReadyAPI project
+  Per CP-SUPIN-04 STEP 32. SoapUI parity for Playwright/Postman REST smoke.
+
+  Run:
+    soapUI: open in SoapUI → Run All
+    headless: testrunner.bat (Win) / testrunner.sh (Linux):
+      testrunner.bat -e "https://demo.bouracka.cz" -r -j -f reports\ bouracka-bring-up-smoke-soapui-project.xml
+
+  Output: JUnit XML reports in reports\ directory.
+  Translator: tools/soapuiToTES.py (TBD CP-SUPIN-05) → JSON → Excel UPSERT.
+
+  IMPORTANT: This is a SCAFFOLD project. SoapUI's actual project XML is
+  ~50 KB with extensive structure (security tests, load tests, mock services,
+  groovy scripts). The version below is a minimum-viable stub that SoapUI
+  4+ can open. Author full project after operator opens once + saves
+  back via SoapUI GUI.
+-->
+<con:soapui-project name="Bouracka-BringUpSmoke"
+                    soapui-version="5.7.2"
+                    abortOnError="false"
+                    runType="SEQUENTIAL"
+                    xmlns:con="http://eviware.com/soapui/config">
+
+    <con:settings/>
+
+    <!-- REST Service definition: Bouracka /api/* -->
+    <con:interface xsi:type="con:RestService" name="Bouracka REST API"
+                   type="rest"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <con:settings/>
+        <con:definitionCache type="TEXT" rootPart=""/>
+        <con:endpoints>
+            <con:endpoint>https://demo.bouracka.cz</con:endpoint>
+        </con:endpoints>
+    </con:interface>
+
+    <!-- Test Suite: BringUpSmoke -->
+    <con:testSuite name="BringUpSmoke">
+        <con:settings/>
+        <con:runType>SEQUENTIAL</con:runType>
+
+        <!-- Test Case: TC-CP-INTEL-001 -->
+        <con:testCase id="TC-CP-INTEL-001"
+                      name="TC-CP-INTEL-001 — insuranceCompanies returns 200 + ALLIANZ"
+                      searchProperties="true"
+                      keepSession="false">
+            <con:settings/>
+
+            <con:testStep type="restrequest" name="GET insuranceCompanies">
+                <con:settings/>
+                <con:config service="Bouracka REST API" methodName="GET">
+                    <con:restRequest>
+                        <con:settings/>
+                        <con:endpoint>${#Project#baseUrl}/api/enumerations/insuranceCompanies</con:endpoint>
+                        <con:request>
+                            <con:settings/>
+                        </con:request>
+                        <con:assertion type="Valid HTTP Status Codes" name="HTTP 200">
+                            <con:configuration>
+                                <con:codes>200</con:codes>
+                            </con:configuration>
+                        </con:assertion>
+                        <con:assertion type="JsonPath Match" name="ALLIANZ.code present">
+                            <con:configuration>
+                                <con:path>$..[?(@.code=='ALLIANZ')].code</con:path>
+                                <con:content>ALLIANZ</con:content>
+                            </con:configuration>
+                        </con:assertion>
+                    </con:restRequest>
+                </con:config>
+            </con:testStep>
+        </con:testCase>
+
+        <!-- Test Case: TC-CP-INTEL-001b -->
+        <con:testCase id="TC-CP-INTEL-001b"
+                      name="TC-CP-INTEL-001b — vehicleBrands returns 200 + ŠKODA OCTAVIA">
+            <con:settings/>
+            <con:testStep type="restrequest" name="GET vehicleBrands">
+                <con:settings/>
+                <con:config service="Bouracka REST API" methodName="GET">
+                    <con:restRequest>
+                        <con:settings/>
+                        <con:endpoint>${#Project#baseUrl}/api/enumerations/vehicleBrands</con:endpoint>
+                        <con:assertion type="Valid HTTP Status Codes" name="HTTP 200">
+                            <con:configuration>
+                                <con:codes>200</con:codes>
+                            </con:configuration>
+                        </con:assertion>
+                        <con:assertion type="JsonPath Match" name="ŠKODA brand exists">
+                            <con:configuration>
+                                <con:path>$..[?(@.name=='ŠKODA')].name</con:path>
+                                <con:content>ŠKODA</con:content>
+                            </con:configuration>
+                        </con:assertion>
+                    </con:restRequest>
+                </con:config>
+            </con:testStep>
+        </con:testCase>
+
+        <!-- Test Case: TC-CP-INTEL-002 — protected enums return 403 -->
+        <con:testCase id="TC-CP-INTEL-002"
+                      name="TC-CP-INTEL-002 — protected enums return 403">
+            <con:settings/>
+            <con:testStep type="restrequest" name="GET licenseCategories (expect 403)">
+                <con:settings/>
+                <con:config service="Bouracka REST API" methodName="GET">
+                    <con:restRequest>
+                        <con:settings/>
+                        <con:endpoint>${#Project#baseUrl}/api/enumerations/licenseCategories</con:endpoint>
+                        <con:assertion type="Valid HTTP Status Codes" name="HTTP 403">
+                            <con:configuration>
+                                <con:codes>403</con:codes>
+                            </con:configuration>
+                        </con:assertion>
+                    </con:restRequest>
+                </con:config>
+            </con:testStep>
+        </con:testCase>
+
+        <!-- Test Case: TC-CP-NEW-F — POST /reports returns UUID-v4 -->
+        <con:testCase id="TC-CP-NEW-F"
+                      name="TC-CP-NEW-F — POST /reports returns UUID-v4">
+            <con:settings/>
+            <con:testStep type="restrequest" name="POST reports">
+                <con:settings/>
+                <con:config service="Bouracka REST API" methodName="POST">
+                    <con:restRequest>
+                        <con:settings/>
+                        <con:endpoint>${#Project#baseUrl}/api/reports</con:endpoint>
+                        <con:request>
+                            <![CDATA[{}]]>
+                        </con:request>
+                        <con:assertion type="Valid HTTP Status Codes" name="HTTP 200">
+                            <con:configuration>
+                                <con:codes>200</con:codes>
+                            </con:configuration>
+                        </con:assertion>
+                        <con:assertion type="Simple Contains" name="UUID-v4 in response">
+                            <con:configuration>
+                                <con:token>-4</con:token>
+                                <con:ignoreCase>true</con:ignoreCase>
+                                <con:useRegEx>true</con:useRegEx>
+                                <con:token>[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}</con:token>
+                            </con:configuration>
+                        </con:assertion>
+                    </con:restRequest>
+                </con:config>
+            </con:testStep>
+        </con:testCase>
+    </con:testSuite>
+
+    <con:properties>
+        <con:property>
+            <con:name>baseUrl</con:name>
+            <con:value>https://demo.bouracka.cz</con:value>
+        </con:property>
+    </con:properties>
+</con:soapui-project>

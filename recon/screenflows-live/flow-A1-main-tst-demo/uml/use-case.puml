@@ -1,0 +1,102 @@
+@startuml flow-A1-main-tst-demo-use-case
+' ─────────────────────────────────────────────────────────────────────
+' Use Case Diagram — Bouračka R1 main happy path (A1) on DEMO
+' Captured: 2026-05-06 live walk via Claude in Chrome
+' Source: recon/screenflows-live/flow-A1-main-tst-demo/flow.md §2
+' ─────────────────────────────────────────────────────────────────────
+title Bouračka R1 — Hlavní průběh záznamu nehody (A1)\n(zaznamenáno z DEMO 2026-05-06)
+
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Účastník A\n(reporter)"     as PA
+actor "Účastník B\n(spoluúčastník)" as PB
+actor "Policie ČR / IZS"           as POLIZS
+actor "Pojišťovna A"                as INS_A
+actor "Pojišťovna B"                as INS_B
+
+package "Bouračka SPA + API (SUT)" {
+    usecase "Otevřít rozcestník"           as UC_HOME
+    usecase "Spustit záznam"                as UC_START
+    usecase "Ověřit telefon (OTP)"          as UC_VERIFY
+    usecase "Zadat osobní údaje"            as UC_PERSONAL
+    usecase "Zadat řidičský průkaz"         as UC_LICENSE
+    usecase "Vyplnit data o vozidle"        as UC_VEHICLE
+    usecase "Vyplnit pojišťovnu vozidla"    as UC_INSURER
+    usecase "Popsat poškození"              as UC_DAMAGE
+    usecase "Vybrat pohyb vozidla"          as UC_MOVE
+    usecase "Vybrat okolnosti nehody"       as UC_CIRC
+    usecase "Zadat datum, čas, místo"       as UC_LOC
+    usecase "Označit viníka"                as UC_CULPRIT
+    usecase "Podepsat SMS kódem"            as UC_SIGN
+    usecase "Stáhnout PDF záznam"           as UC_PDF
+    usecase "Zobrazit identifikační kód"    as UC_IDCODE
+    usecase "Zavolat asistenci pojišťovny"  as UC_TOW
+}
+
+package "Externí systémy" {
+    usecase "Vyhledat adresu (RUIAN)"       as UC_RUIAN
+    usecase "Vykreslit mapu"                as UC_MAP
+    usecase "Ověřit reCAPTCHA"              as UC_RECAP
+    usecase "Číst plán odstávek"            as UC_OUTAGE
+}
+
+' Účastník A drives the entire flow
+PA --> UC_HOME
+PA --> UC_START
+PA --> UC_VERIFY
+PA --> UC_PERSONAL
+PA --> UC_LICENSE
+PA --> UC_VEHICLE
+PA --> UC_INSURER
+PA --> UC_DAMAGE
+PA --> UC_MOVE
+PA --> UC_CIRC
+PA --> UC_LOC
+PA --> UC_CULPRIT
+PA --> UC_SIGN
+PA --> UC_PDF
+PA --> UC_TOW
+
+' Účastník B participates only in OTP rounds (verify + sign) and as data-subject
+PB --> UC_VERIFY
+PB --> UC_SIGN
+PB --> UC_PDF : <<reads>>
+
+' Policie / IZS read identifikační kód
+POLIZS --> UC_IDCODE
+
+' Pojišťovny receive notifications + claims
+INS_A <-- UC_TOW : <<calls>>
+INS_B <-- UC_TOW : <<calls>>
+
+' Internal includes (information-flow only — UML <<include>>)
+UC_PERSONAL .> UC_RUIAN  : <<include>>
+UC_LOC      .> UC_RUIAN  : <<include>>
+UC_LOC      .> UC_MAP    : <<include>>
+UC_HOME     .> UC_OUTAGE : <<include>>
+UC_HOME     .> UC_RECAP  : <<include>>
+UC_VERIFY   .> UC_RECAP  : <<include>>
+
+note right of UC_VERIFY
+  DEMO: any 4-digit code accepted
+  PROD: real SMS via N8 SMS Gateway (Δ1)
+end note
+
+note right of UC_LICENSE
+  DEMO: manual entry only
+  PROD: AISPOV CRR (Δ-NEW27) lookup available
+end note
+
+note right of UC_SIGN
+  Sequential A→B; each gets own SMS round
+  DEMO accepts any 4-digit; PROD real SMS
+end note
+
+note bottom of UC_PDF
+  Client-side via FileSaver.js
+  DEMO: no email dispatch (Δ31)
+  PROD: e-mail to both participants
+end note
+
+@enduml

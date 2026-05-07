@@ -1,0 +1,38 @@
+# Confidential SUPIN material — per CLIENT-PILOT-SUPIN-V0.1.md §7
+recon/screens/attachments/
+recon/flows/attachments/
+recon/integrations/attachments/
+recon/bugs/
+recon/divergences/
+recon/raw/
+
+# Secrets
+fixtures/secrets/
+fixtures/test-drivers.json
+fixtures/test-vehicles.json
+fixtures/valid-login-tst.json
+fixtures/valid-login-tst-demo.json
+.env
+.env.local
+
+# Build / install
+node_modules/
+package-lock.json
+
+# Reports + run artefacts (kept in runs/ instead)
+playwright-report/
+cypress/screenshots/
+cypress/videos/
+cypress/downloads/
+testcafe-report/
+test-results/
+*.log
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Editor state
+.vscode/
+.idea/
+*.swp

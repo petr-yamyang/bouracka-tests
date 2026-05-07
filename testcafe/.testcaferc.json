@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/DevExpress/testcafe/master/docs/testcaferc-schema.json",
+  "browsers": ["chrome:headless"],
+  "src": "testcafe/tests/**/*.test.ts",
+  "reporter": [
+    { "name": "spec" },
+    { "name": "json", "output": "../runs/testcafe-latest.json" }
+  ],
+  "screenshots": {
+    "path": "../testcafe-report",
+    "takeOnFails": true,
+    "fullPage": true
+  },
+  "videoPath": "../testcafe-report/videos",
+  "concurrency": 1,
+  "selectorTimeout": 10000,
+  "assertionTimeout": 5000,
+  "pageLoadTimeout": 30000,
+  "speed": 1
+}

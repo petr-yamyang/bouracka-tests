@@ -1,0 +1,241 @@
+@startuml flow-A1-main-tst-demo-activity
+' ─────────────────────────────────────────────────────────────────────
+' Activity Diagram — A1 main happy path on DEMO
+' Lanes: Účastník A | SPA + API | Externí
+' Source: recon/screenflows-live/flow-A1-main-tst-demo/flow.md §2.2
+' ─────────────────────────────────────────────────────────────────────
+title Bouračka R1 — Aktivitní diagram hlavního průběhu (A1)\nzaznamenáno z DEMO 2026-05-06
+
+|Účastník A|
+start
+:Otevře rozcestník\n`/formular/`;
+:Klikne "VYPLNIT ZÁZNAM";
+
+|SPA + API|
+:GET odstavky.json (×2);
+:Načte rozcestník + 3 karty;
+
+|Účastník A|
+:Klikne "Rozumím" na intro;
+
+|SPA + API|
+:**POST /api/reports** → UUID;
+:GET /reports/{r};
+:Routing → /verification;
+
+|Účastník A|
+:Vyplní telefon A + GDPR check;
+:Klikne "Odeslat kód";
+
+|SPA + API|
+:**PUT /reporter** {phone};
+:**POST /sendCodeToVerify** (A);
+note right
+  DEMO: žádné SMS
+  PROD: N8 SMS Gateway (Δ1)
+end note
+
+|Účastník A|
+:Vepíše 4místný OTP kód;
+:Klikne "Ověřit";
+
+|SPA + API|
+:**POST /verify** (A) → 200;
+:Načte form pro účastníka B;
+
+|Účastník A|
+:Vyplní telefon B;
+:Klikne "Odeslat kód";
+
+|SPA + API|
+:**POST /participants** → B-UUID;
+:**POST /sendCodeToVerify** (B);
+
+|Účastník A|
+:Vepíše OTP kód B;
+
+|SPA + API|
+:**POST /verify** (B);
+:**POST /session/refresh**;
+:Routing → /verification/success;
+
+|Účastník A|
+:Vidí 2× "✓ Ověřeno";
+:Klikne "Přejít na informace o nehodě";
+
+|SPA + API|
+:Routing → /documents/{A};
+
+|Účastník A|
+:Klikne "Vyplnit údaje ručně"\n(přeskočí OCR fotografií);
+
+|SPA + API|
+:Routing → /documents/{A}/manual?validate=false;
+:Načte UserDataPage + RUIAN client;
+
+|Účastník A|
+:Vyplní jméno, příjmení, OP, DoB;
+:Píše do "Vaše adresa";
+
+|SPA + API|
+:Pro každý keystroke:
+**GET ČÚZK suggest** (INT-009);
+
+|Externí|
+:ČÚZK ArcGIS REST → JSON suggestions;
+
+|Účastník A|
+:Vybere adresu z autocomplete;
+
+|SPA + API|
+:**GET ČÚZK query** {magicKey};
+:**GET ČÚZK MapServer/4** (obec lookup);
+
+|Účastník A|
+:Vyplní ŘP číslo + skupiny;
+:Klikne "Potvrdit";
+
+|SPA + API|
+:**PUT participantData**;
+:**PUT email**;
+:**PUT drivingLicense/update**;
+:Routing → /documents/{A}/recap;
+
+|Účastník A|
+:Zkontroluje data + vyplní email;
+:Klikne "Uložit";
+
+|SPA + API|
+:**PUT email** (znovu);
+:**POST /session/refresh**;
+:Routing → /documents/{B}/...;
+
+|Účastník A|
+:Stejný proces pro B;
+
+|SPA + API|
+:Stejný blok PUTů pro B;
+:Routing → /witness;
+
+|Účastník A|
+:Klikne "Pokračovat bez svědků";
+
+|SPA + API|
+:Routing → /accident/{A};
+
+|Účastník A|
+:Klikne "POKRAČOVAT BEZ FOTOGRAFIÍ";
+note left
+  Phase 3 photos optional;
+  PROD AISPOV-CRR may auto-fill SPZ-bound data
+end note
+
+|SPA + API|
+:Routing → /accident/{A}/damage;
+
+|Účastník A|
+:Vyplní popis poškození;
+:Zatrhne "Vozidlo nebylo poškozeno"\nnebo zóny (FRONT/LEFT/...);
+
+|SPA + API|
+:**PUT damage**;
+:Routing → /accident/{A}/damage/movement;
+
+|Účastník A|
+:Vybere pohyb (1 z 18);
+
+|SPA + API|
+:**PUT movementDefinition**;
+:Routing → /accident/{A}/damage/data;
+
+|Účastník A|
+:Vyplní SPZ + značka + model;
+:Vybere pojišťovnu;
+
+|SPA + API|
+:**PUT vehicle**;
+:**PUT insurer**;
+
+|Účastník A|
+:Stejný proces pro vozidlo B;
+
+|SPA + API|
+:Routing → /accident/circumstances;
+
+|Účastník A|
+:Vybere typ nehody (1 z 5);
+:Napíše popis nehody;
+
+|SPA + API|
+:**PUT circumstances**;
+:Routing → /situation;
+
+|Účastník A|
+:Potvrdí datum + čas (default = teď);
+:Odpoví "Ano, jsem na místě";
+
+|SPA + API|
+:**PUT datetime**;
+:Routing → /situation/location/manual;
+
+|Účastník A|
+:Vybere adresu nebo napíše popis;
+
+|SPA + API|
+:**GET Google Static Maps** (INT-007);
+:**PUT location**;
+:Routing → /culprit;
+
+|Účastník A|
+:Označí viníka (A | B | "Není zřejmé");
+
+|SPA + API|
+:**PUT responsibleParticipant**;
+:**GET completenessStatus**;
+:Routing → /summary;
+
+|Účastník A|
+:Zkontroluje vše;
+:Zatrhne potvrzovací checkbox;
+:Klikne "Podepsat záznam o nehodě";
+
+|SPA + API|
+:**POST /confirmation** (lock);
+:**GET /summaryId**;
+:Routing → /sign-report;
+
+|Účastník A|
+:Klikne "Odeslat kód do sms" pro A;
+
+|SPA + API|
+:**POST /sendCodeToSign** (A);
+
+|Účastník A|
+:Vepíše OTP A;
+
+|SPA + API|
+:**POST /sign** (A);
+:Načte form B;
+
+|Účastník A|
+:Klikne "Odeslat kód do sms" pro B;
+:Vepíše OTP B;
+
+|SPA + API|
+:**POST /sendCodeToSign** (B);
+:**POST /sign** (B);
+:Routing → /success;
+
+|Účastník A|
+:Vidí "Záznam byl odeslán";
+:Klikne "Stáhnout PDF záznam";
+
+|SPA + API|
+:Generuje PDF client-side\n(FileSaver.js);
+note right
+  DEMO: žádné e-maily (Δ31)
+  PROD: e-mail oběma účastníkům + odkaz na PDF
+end note
+
+stop
+@enduml

@@ -1,0 +1,764 @@
+# Bouračka — Field Definition Catalogue
+# ─────────────────────────────────────────────────────────────────────────────
+# Source        : SUPIN_Bouracka_summary_ANA_v6.xlsx, tab "Data"
+# Captured from : photo set IMG_1063..IMG_1066 (analyticke vstupy/lists of values/)
+# Captured on   : 2026-05-05  by Cowork Opus / CP-SUPIN-02 rev 6
+# Resolves OQ   : OQ-CP-21 (the "definiční excel")
+#
+# This file is the canonical machine-readable catalogue of every UI/data
+# field in the bouracka.cz application. 121 entries. Every entry corresponds
+# to one row of the source Excel "Data" tab.
+#
+# How to add or change a value:
+#   1. Edit one entry below. Bump file version in `meta`.
+#   2. If a field's `codelist` references a not-yet-defined codelist,
+#      add it to fixtures/codelists.yaml (see meta.codelists_referenced).
+#   3. Run `node tools/validate-field-definitions.js` (CP-SUPIN-03 deliverable).
+#   4. Commit; both this YAML and the Excel master should agree.
+#
+# Note on DEMO vs Bouračka:
+#   Default `applies_to` is the production-equivalent Bouračka schema (and
+#   tst.bouracka.cz). For DEMO (tst.demo.bouracka.cz) divergences per scope
+#   C-5 ("reduced validation"), use `demo_overrides:` per field as they
+#   become known. The meta block tracks the audit posture.
+#
+# Field key conventions:
+#   id                : F-NNN zero-padded (canonical; never re-numbered)
+#   entity            : Report | Participant | Witness |
+#                       ParticipantVehicleMovementDefinition |
+#                       ParticipantVehicleDamageLocation | VehiclePolicyholder
+#   attribute         : Czech FE attribute name verbatim from doc
+#   screen            : "Obrazovka / sekce" verbatim
+#   fe_type           : inputbox | inputbox+kalendář | inputbox(read only) |
+#                       combobox | multichoice | checkbox | radiobutton |
+#                       QR kód | nezobrazeno
+#   required_fe       : ano | ne | nezobrazeno | "pouze pokud je dostupné" |
+#                       n/a
+#   data_type         : string(N) | integer(N) | datetime | date | time |
+#                       boolean | UUID | decimal(P,S)
+#   codelist          : reference to fixtures/codelists.yaml entry or ~
+#   input_from        : Aplikace | Uživatel | Uživatel (SMS) |
+#                       OCR fotky OP (ZenID) | OCR fotky SPZ (ZenID) |
+#                       AISPOV (ROB, CRR) | AISPOV (CRR) | AISPOV (CRV) |
+#                       AISPOV (Evidence poj. vozidel) | Google Maps | RUIAN
+#   output_to         : "Vyplněné PDF" | "Aplikace" | ~
+#   rules             : free-text validation/behaviour rules from doc
+#   demo_overrides    : map of {field-key: new-value} for tst.demo if known
+#   notes             : free-text human notes (we add)
+# ─────────────────────────────────────────────────────────────────────────────
+
+meta:
+  schema_version: 0.1.0
+  source_workbook: SUPIN_Bouracka_summary_ANA_v6.xlsx
+  source_tab: Data
+  source_excel_other_tabs: [Obrazovky stavy, Číselníky]   # to be ingested next
+  total_fields: 121
+  fields_with_codelist: 8       # see codelists_referenced
+  fields_active_in_mvp: 101     # 121 minus 20 VehiclePolicyholder placeholders
+  fields_placeholder_only: 20   # VehiclePolicyholder block — "aktuálně bez využití"
+  applies_to: [bouracka, tst.bouracka.cz]
+  demo_status: pending            # tst.demo.bouracka.cz delta layer not yet captured
+  captured_at: 2026-05-05
+
+codelists_referenced:
+  - id: CL-STAVY-HLASENI
+    name_cs: Stavy hlášení
+    notes: accidentReportStatus enum — see _specs/ANALYTICAL-DOC-INTELLIGENCE-v0.2.md §2.7
+  - id: CL-ZNACKY-MODEL
+    name_cs: Značky a model
+    notes: Vehicle make + model catalogue; AISPOV-sourced
+  - id: CL-SKUPINY-OPRAVNENI
+    name_cs: Skupiny řidičských oprávnění
+    notes: License categories (A, A1, B, BE, C, CE, C1E, etc.)
+  - id: CL-DEFINICE-POHYBU
+    name_cs: Definice pohybů vozidla
+    notes: Vehicle-movement before collision
+  - id: CL-POSKOZENI-CASTI
+    name_cs: Poškození částí vozidla
+    notes: Damage location markers (vehicle outline)
+  - id: CL-SITUACNI-NAKRES
+    name_cs: Situační nákres
+    notes: Predefined collision-position diagrams
+  - id: CL-POJISTOVNY
+    name_cs: Pojišťovny
+    notes: Insurance company list with STATUS=AKT/INA filter
+  - id: CL-VINIK-NEHODY
+    name_cs: Viník nehody
+    notes: Fault-party radiobutton (vlastní / protistrana / neurčeno)
+
+# ═════════════════════════════════════════════════════════════════════════════
+# FIELDS — 121 entries
+# ═════════════════════════════════════════════════════════════════════════════
+
+fields:
+
+  # ── Report meta (4 fields) ────────────────────────────────────────────────
+  - {id: F-001, entity: Report, attribute: "ID Hlášení DN (KodDN)",
+     screen: "V celé aplikaci a po ověření telefonních čísel",
+     fe_type: "QR kód", required_fe: "n/a", data_type: "integer(15)",
+     codelist: ~, input_from: "Aplikace", output_to: "Vyplněné PDF",
+     rules: "KodDN tvar '999999625000001': 999999=strukturalní ekvivalent organizace; 25=aktuální rok; 0000001=postupna vzestupná řada",
+     notes: "Zobrazena až po ověření telefonních čísel"}
+  - {id: F-002, entity: Report, attribute: "Datum a čas vytvoření ID hlášení (KodDN)",
+     screen: "Ověření telefonních čísel",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "datetime",
+     codelist: ~, input_from: "Aplikace", output_to: ~, rules: ~, notes: ~}
+  - {id: F-003, entity: Report, attribute: "Session ID (interní id hlášení)",
+     screen: "Od přístupu uživatele na landing page",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "UUID",
+     codelist: ~, input_from: "Aplikace", output_to: ~, rules: ~, notes: ~}
+  - {id: F-004, entity: Report, attribute: "Status hlášení",
+     screen: "nezobrazeno",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "string(5)",
+     codelist: "CL-STAVY-HLASENI", input_from: "Aplikace", output_to: ~,
+     rules: "accidentReportStatus state machine", notes: ~}
+
+  # ── Phone verification — Účastník 1 (5 fields) ────────────────────────────
+  - {id: F-005, entity: Participant, attribute: "Souhlas se zprac. údajů - účastník 1",
+     screen: "Ověření telefonních čísel",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "boolean",
+     codelist: ~, input_from: "Aplikace", output_to: ~, rules: ~, notes: ~}
+  - {id: F-006, entity: Participant, attribute: "Datum a čas uložení souhlasu se zprac. údajů - účastník 1",
+     screen: "Ověření telefonních čísel",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "datetime",
+     codelist: ~, input_from: "Aplikace", output_to: ~, rules: ~, notes: ~}
+  - {id: F-007, entity: Participant, attribute: "Telefon - účastník A - předvolba",
+     screen: "Ověření telefonních čísel",
+     fe_type: "combobox", required_fe: "ano", data_type: "string(5)",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: "Defaultní povolené předvolby: CZ +420, SK +421",
+     notes: ~}
+  - {id: F-008, entity: Participant, attribute: "Telefon - účastník A - číslo",
+     screen: "Ověření telefonních čísel",
+     fe_type: "inputbox", required_fe: "ano", data_type: "integer(9)",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: "SK: 9 čísel. CZ: musí začínat jedním z prefixů: 601-608, 702-706, 719-739, 770-779, 790-792, 794, 795, 797, 799 + 6 dalších čísel",
+     notes: "Czech mobile prefix list per analytical doc p28/133"}
+  - {id: F-009, entity: Participant, attribute: "Autorizační kód po ověření - účastník 1",
+     screen: "Ověření telefonních čísel",
+     fe_type: "inputbox", required_fe: "nezobrazeno", data_type: "integer(4)",
+     codelist: ~, input_from: "Uživatel (SMS)", output_to: "Vyplněné PDF",
+     rules: "4 číslený autorizační kód", notes: ~}
+  - {id: F-010, entity: Participant, attribute: "Počet zbývajících pokusů o ověření - účastník 1",
+     screen: "Ověření telefonních čísel",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "integer(1)",
+     codelist: ~, input_from: "Aplikace", output_to: ~,
+     rules: "Defaultní nastaveno na 5", notes: ~}
+  - {id: F-011, entity: Participant, attribute: "Počet zbývajících pokusů o opakované zaslání - účastník 1",
+     screen: "Ověření telefonních čísel",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "integer(1)",
+     codelist: ~, input_from: "Aplikace", output_to: ~,
+     rules: "Defaultní nastaveno na 5", notes: ~}
+
+  # ── Phone verification — Účastník 2 (6 fields) ────────────────────────────
+  - {id: F-012, entity: Participant, attribute: "Souhlas se zprac. údajů - účastník 2",
+     screen: "Ověření telefonních čísel",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "boolean",
+     codelist: ~, input_from: "Aplikace", output_to: ~, rules: ~, notes: ~}
+  - {id: F-013, entity: Participant, attribute: "Datum a čas uložení souhlasu se zprac. údajů - účastník 2",
+     screen: "Ověření telefonních čísel",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "datetime",
+     codelist: ~, input_from: "Aplikace", output_to: ~,
+     rules: "Vyplnit v moment úspěšného ověření autorizačním kódem",
+     notes: "Driver-N consent recorded via SMS-link interaction (per analytical doc p22)"}
+  - {id: F-014, entity: Participant, attribute: "Telefon - účastník N - předvolba",
+     screen: "Ověření telefonních čísel",
+     fe_type: "combobox", required_fe: "ano", data_type: "string(5)",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: "Defaultní povolené předvolby: CZ +420, SK +421",
+     notes: ~}
+  - {id: F-015, entity: Participant, attribute: "Telefon - účastník N - číslo",
+     screen: "Ověření telefonních čísel",
+     fe_type: "inputbox", required_fe: "ano", data_type: "integer(9)",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: "Same prefix validation as F-008",
+     notes: ~}
+  - {id: F-016, entity: Participant, attribute: "Autorizační kód po ověření - účastník 2",
+     screen: "Ověření telefonních čísel",
+     fe_type: "inputbox", required_fe: "nezobrazeno", data_type: "integer(4)",
+     codelist: ~, input_from: "Uživatel (SMS)", output_to: "Vyplněné PDF",
+     rules: "4 číslený autorizační kód", notes: ~}
+  - {id: F-017, entity: Participant, attribute: "Počet zbývajících pokusů o ověření - účastník 2",
+     screen: "Ověření telefonních čísel",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "integer(1)",
+     codelist: ~, input_from: "Aplikace", output_to: ~,
+     rules: "Defaultní nastaveno na 5", notes: ~}
+  - {id: F-018, entity: Participant, attribute: "Počet zbývajících pokusů o opakované zaslání - účastník 2",
+     screen: "Ověření telefonních čísel",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "integer(1)",
+     codelist: ~, input_from: "Aplikace", output_to: ~,
+     rules: "Defaultní nastaveno na 5", notes: ~}
+
+  # ── Vehicle data — Vozidlo A (5 fields) ───────────────────────────────────
+  - {id: F-019, entity: Participant, attribute: "SPZ",
+     screen: "Údaje o vozidle - vozidlo 1",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(2,12)",
+     codelist: ~, input_from: "OCR fotky SPZ (ZenID), AISPOV (Evidence poj. vozidel)",
+     output_to: "Vyplněné PDF",
+     rules: "Min 2, max 12 znaků (včetně diakritiky)", notes: ~}
+  - {id: F-020, entity: Participant, attribute: "Tovární značka",
+     screen: "Údaje o vozidle - vozidlo A",
+     fe_type: "combobox", required_fe: "ano", data_type: "string(200)",
+     codelist: "CL-ZNACKY-MODEL", input_from: "AISPOV (CRV)",
+     output_to: "Vyplněné PDF",
+     rules: "5 možností libovolného volného textu, Funkce našeptávači",
+     notes: ~}
+  - {id: F-021, entity: Participant, attribute: "Obchodní označení",
+     screen: "Údaje o vozidle - vozidlo A",
+     fe_type: "combobox", required_fe: "ano", data_type: "string(200)",
+     codelist: "CL-ZNACKY-MODEL", input_from: "AISPOV (CRV)",
+     output_to: "Vyplněné PDF",
+     rules: "Omezit výběr na relevantní dle výběru v poli Značka, 5 možností libovolného volného textu, Funkce našeptávači",
+     notes: ~}
+  - {id: F-022, entity: Participant, attribute: "Rok výroby",
+     screen: "Údaje o vozidle - vozidlo A",
+     fe_type: "inputbox", required_fe: "ano", data_type: "integer(4)",
+     codelist: ~, input_from: "AISPOV (CRV)", output_to: "Vyplněné PDF",
+     rules: "Pravé 4 číslice. Minimum '1900'. Zobrazena pouze v případě stažení hodnoty z AISPOV; nezobrazena při manuálním průchodu",
+     notes: ~}
+  - {id: F-023, entity: Participant, attribute: "VIN",
+     screen: "Údaje o vozidle - vozidlo A",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "string(28)",
+     codelist: ~, input_from: "AISPOV (CRV)", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+
+  # ── Vehicle data — Vozidlo N (5 fields) ───────────────────────────────────
+  - {id: F-024, entity: Participant, attribute: "SPZ",
+     screen: "Údaje o vozidle - vozidlo N",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(2,12)",
+     codelist: ~, input_from: "OCR fotky SPZ (ZenID), AISPOV (Evidence poj. vozidel)",
+     output_to: "Vyplněné PDF",
+     rules: "Min 2, max 12 znaků (včetně diakritiky)", notes: ~}
+  - {id: F-025, entity: Participant, attribute: "Tovární značka",
+     screen: "Údaje o vozidle - vozidlo N",
+     fe_type: "combobox", required_fe: "ano", data_type: "string(200)",
+     codelist: "CL-ZNACKY-MODEL", input_from: "AISPOV (CRV)",
+     output_to: "Vyplněné PDF",
+     rules: "5 možností libovolného volného textu, Funkce našeptávači",
+     notes: ~}
+  - {id: F-026, entity: Participant, attribute: "Obchodní označení",
+     screen: "Údaje o vozidle - vozidlo N",
+     fe_type: "combobox", required_fe: "ano", data_type: "string(200)",
+     codelist: "CL-ZNACKY-MODEL", input_from: "AISPOV (CRV)",
+     output_to: "Vyplněné PDF",
+     rules: "Omezit výběr na relevantní dle výběru v poli Značka",
+     notes: ~}
+  - {id: F-027, entity: Participant, attribute: "Rok výroby",
+     screen: "Údaje o vozidle - vozidlo N",
+     fe_type: "inputbox", required_fe: "ano", data_type: "integer(4)",
+     codelist: ~, input_from: "AISPOV (CRV)", output_to: "Vyplněné PDF",
+     rules: "Pravé 4 číslice. Minimum '1900'. Zobrazena pouze v případě stažení hodnoty z AISPOV",
+     notes: ~}
+  - {id: F-028, entity: Participant, attribute: "VIN",
+     screen: "Údaje o vozidle - vozidlo N",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "string(28)",
+     codelist: ~, input_from: "AISPOV (CRV)", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+
+  # ── Personal data — Účastník A (15 fields) ────────────────────────────────
+  - {id: F-029, entity: Participant, attribute: "Číslo OP",
+     screen: "Osobní údaje - účastník 1",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(9)",
+     codelist: ~, input_from: "OCR fotky OP (ZenID), AISPOV (ROB, CRR)",
+     output_to: "Vyplněné PDF",
+     rules: "Pattern: ^[A-Z0-9]{9}$ — Czech OP-format regex",
+     notes: ~}
+  - {id: F-030, entity: Participant, attribute: "Jméno",
+     screen: "Osobní údaje - účastník A",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(48)",
+     codelist: ~, input_from: "OCR fotky OP (ZenID), AISPOV (ROB, CRR)",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+  - {id: F-031, entity: Participant, attribute: "Příjmení",
+     screen: "Osobní údaje - účastník A",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(36)",
+     codelist: ~, input_from: "OCR fotky OP (ZenID), AISPOV (ROB, CRR)",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+  - {id: F-032, entity: Participant, attribute: "Datum narození",
+     screen: "Osobní údaje - účastník A",
+     fe_type: "inputbox+kalendář", required_fe: "ano", data_type: "date",
+     codelist: ~, input_from: "OCR fotky OP (ZenID), AISPOV (ROB, CRR)",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+  - {id: F-033, entity: Participant, attribute: "Ulice",
+     screen: "Osobní údaje - účastník A",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(48)",
+     codelist: ~, input_from: "OCR fotky OP (ZenID), AISPOV (ROB, CRR)",
+     output_to: "Vyplněné PDF", rules: "Našeptávač", notes: ~}
+  - {id: F-034, entity: Participant, attribute: "Číslo popisné",
+     screen: "Osobní údaje - účastník A",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(6)",
+     codelist: ~, input_from: "OCR fotky OP (ZenID), AISPOV (ROB, CRR)",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+  - {id: F-035, entity: Participant, attribute: "Číslo orientační",
+     screen: "Osobní údaje - účastník A",
+     fe_type: "inputbox", required_fe: "ne", data_type: "string(6)",
+     codelist: ~, input_from: "OCR fotky OP (ZenID), AISPOV (ROB, CRR)",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+  - {id: F-036, entity: Participant, attribute: "Obec",
+     screen: "Osobní údaje - účastník A",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(48)",
+     codelist: ~, input_from: "OCR fotky OP (ZenID), AISPOV (ROB, CRR)",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+  - {id: F-037, entity: Participant, attribute: "PSČ",
+     screen: "Osobní údaje - účastník A",
+     fe_type: "inputbox", required_fe: "ano", data_type: "integer(5)",
+     codelist: ~, input_from: "OCR fotky OP (ZenID), AISPOV (ROB, CRR)",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+  - {id: F-038, entity: Participant, attribute: "Telefon - předvolba",
+     screen: "Osobní údaje - účastník A",
+     fe_type: "inputbox(read only)", required_fe: "ano", data_type: "string(5)",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: "Předvyplněno z obrazovky ověření, bez možnosti editace", notes: ~}
+  - {id: F-039, entity: Participant, attribute: "Telefon - číslo",
+     screen: "Osobní údaje - účastník A",
+     fe_type: "inputbox(read only)", required_fe: "ano", data_type: "integer(9)",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: "Předvyplněno z obrazovky ověření, bez možnosti editace", notes: ~}
+  - {id: F-040, entity: Participant, attribute: "Email",
+     screen: "Osobní údaje - účastník A",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(128)",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: "Email formát", notes: "Always manual; never registry-derived"}
+  - {id: F-041, entity: Participant, attribute: "Číslo ŘP",
+     screen: "Osobní údaje - účastník A",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(10)",
+     codelist: ~, input_from: "AISPOV (CRR)", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+  - {id: F-042, entity: Participant, attribute: "Skupina oprávnění",
+     screen: "Osobní údaje - účastník A",
+     fe_type: "multichoice", required_fe: "ano", data_type: "string(128)",
+     codelist: "CL-SKUPINY-OPRAVNENI", input_from: "AISPOV (CRR)",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+  - {id: F-043, entity: Participant, attribute: "Řidičský průkaz vydal",
+     screen: "Osobní údaje - účastník A",
+     fe_type: "inputbox", required_fe: "pouze pokud je dostupné",
+     data_type: "string(64)",
+     codelist: ~, input_from: "AISPOV (CRR)", output_to: "Vyplněné PDF",
+     rules: "V případě manuálního zadávání osobních údajů bude pole skryto",
+     notes: ~}
+
+  # ── Personal data — Účastník N (15 fields) ────────────────────────────────
+  - {id: F-044, entity: Participant, attribute: "Číslo OP",
+     screen: "Osobní údaje - účastník N",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(9)",
+     codelist: ~, input_from: "OCR fotky OP (ZenID), AISPOV (ROB, CRR)",
+     output_to: "Vyplněné PDF",
+     rules: "Pattern: ^[A-Z0-9]{9}$", notes: ~}
+  - {id: F-045, entity: Participant, attribute: "Jméno",
+     screen: "Osobní údaje - účastník N",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(48)",
+     codelist: ~, input_from: "OCR fotky OP (ZenID), AISPOV (ROB, CRR)",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+  - {id: F-046, entity: Participant, attribute: "Příjmení",
+     screen: "Osobní údaje - účastník N",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(36)",
+     codelist: ~, input_from: "OCR fotky OP (ZenID), AISPOV (ROB, CRR)",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+  - {id: F-047, entity: Participant, attribute: "Datum narození",
+     screen: "Osobní údaje - účastník N",
+     fe_type: "inputbox+kalendář", required_fe: "ano", data_type: "date",
+     codelist: ~, input_from: "OCR fotky OP (ZenID), AISPOV (ROB, CRR)",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+  - {id: F-048, entity: Participant, attribute: "Ulice",
+     screen: "Osobní údaje - účastník N",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(48)",
+     codelist: ~, input_from: "OCR fotky OP (ZenID)", output_to: "Vyplněné PDF",
+     rules: "Našeptávač", notes: ~}
+  - {id: F-049, entity: Participant, attribute: "Číslo popisné",
+     screen: "Osobní údaje - účastník N",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(6)",
+     codelist: ~, input_from: "OCR fotky OP (ZenID)", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+  - {id: F-050, entity: Participant, attribute: "Číslo orientační",
+     screen: "Osobní údaje - účastník N",
+     fe_type: "inputbox", required_fe: "ne", data_type: "string(6)",
+     codelist: ~, input_from: "OCR fotky OP (ZenID)", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+  - {id: F-051, entity: Participant, attribute: "Obec",
+     screen: "Osobní údaje - účastník N",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(48)",
+     codelist: ~, input_from: "OCR fotky OP (ZenID)", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+  - {id: F-052, entity: Participant, attribute: "PSČ",
+     screen: "Osobní údaje - účastník N",
+     fe_type: "inputbox", required_fe: "ano", data_type: "integer(5)",
+     codelist: ~, input_from: "OCR fotky OP (ZenID)", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+  - {id: F-053, entity: Participant, attribute: "Email",
+     screen: "Osobní údaje - účastník N",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(128)",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: "Email formát", notes: ~}
+  - {id: F-054, entity: Participant, attribute: "Telefon - předvolba",
+     screen: "Osobní údaje - účastník N",
+     fe_type: "inputbox(read only)", required_fe: "ano", data_type: "string(5)",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: "Předvyplněno z obrazovky ověření, bez možnosti editace", notes: ~}
+  - {id: F-055, entity: Participant, attribute: "Telefon - číslo",
+     screen: "Osobní údaje - účastník N",
+     fe_type: "inputbox(read only)", required_fe: "ano", data_type: "integer(9)",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: "Předvyplněno z obrazovky ověření, bez možnosti editace", notes: ~}
+  - {id: F-056, entity: Participant, attribute: "Číslo ŘP",
+     screen: "Osobní údaje - účastník N",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(10)",
+     codelist: ~, input_from: "AISPOV (CRR)", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+  - {id: F-057, entity: Participant, attribute: "Skupina oprávnění",
+     screen: "Osobní údaje - účastník N",
+     fe_type: "multichoice", required_fe: "ano", data_type: "string(128)",
+     codelist: "CL-SKUPINY-OPRAVNENI", input_from: "AISPOV (CRR)",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+  - {id: F-058, entity: Participant, attribute: "Řidičský průkaz vydal",
+     screen: "Osobní údaje - účastník N",
+     fe_type: "inputbox", required_fe: "pouze pokud je dostupné",
+     data_type: "string(64)",
+     codelist: ~, input_from: "AISPOV (CRR)", output_to: "Vyplněné PDF",
+     rules: "V případě manuálního zadávání osobních údajů bude pole skryto",
+     notes: ~}
+
+  # ── Date / time / location of accident (11 fields) ────────────────────────
+  - {id: F-059, entity: Report, attribute: "Datum",
+     screen: "Datum, čas a místo nehody",
+     fe_type: "inputbox+kalendář", required_fe: "ano", data_type: "date",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: "Omezeno na rozsah od 0–3 dnů ad TODAY. Předvyplnit datem a časem momentu, kdy došlo k ověření druhého kontaktu (a tedy vzniku čísla DN)",
+     notes: ~}
+  - {id: F-060, entity: Report, attribute: "Čas",
+     screen: "Datum, čas a místo nehody",
+     fe_type: ~, required_fe: ~, data_type: "time",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: "Same range constraint as F-059", notes: ~}
+  - {id: F-061, entity: Report, attribute: "Místo nehody - dle GPS - šířka",
+     screen: "Datum, čas a místo nehody",
+     fe_type: "inputbox(read only)", required_fe: "ano", data_type: "decimal(14,7)",
+     codelist: ~, input_from: "Google Maps", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+  - {id: F-062, entity: Report, attribute: "Místo nehody - dle GPS - délka",
+     screen: "Datum, čas a místo nehody",
+     fe_type: "inputbox(read only)", required_fe: "ano", data_type: "decimal(14,7)",
+     codelist: ~, input_from: "Google Maps", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+  - {id: F-063, entity: Report, attribute: "Místo nehody - dle adresy - Ulice",
+     screen: "Datum, čas a místo nehody",
+     fe_type: "inputbox", required_fe: "ne", data_type: "string(48)",
+     codelist: ~, input_from: "RUIAN", output_to: "Vyplněné PDF",
+     rules: "Našeptávač", notes: ~}
+  - {id: F-064, entity: Report, attribute: "Místo nehody - dle adresy - Číslo popisné",
+     screen: "Datum, čas a místo nehody",
+     fe_type: "inputbox", required_fe: "ne", data_type: "integer(6)",
+     codelist: ~, input_from: "RUIAN", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+  - {id: F-065, entity: Report, attribute: "Místo nehody - dle adresy - Číslo orientační",
+     screen: "Datum, čas a místo nehody",
+     fe_type: "inputbox", required_fe: "ne", data_type: "string(48)",
+     codelist: ~, input_from: "RUIAN", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+  - {id: F-066, entity: Report, attribute: "Místo nehody - dle adresy - Obec",
+     screen: "Datum, čas a místo nehody",
+     fe_type: "inputbox", required_fe: "ne", data_type: "string(48)",
+     codelist: ~, input_from: "RUIAN", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+  - {id: F-067, entity: Report, attribute: "Místo nehody - dle adresy - PSČ",
+     screen: "Datum, čas a místo nehody",
+     fe_type: "inputbox", required_fe: "ne", data_type: "string(5)",
+     codelist: ~, input_from: "RUIAN", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+  - {id: F-068, entity: Report, attribute: "Místo nehody - slovní popis - ruian id",
+     screen: "Datum, čas a místo nehody",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "integer(10)",
+     codelist: ~, input_from: "RUIAN", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+  - {id: F-069, entity: Report, attribute: "Místo nehody - slovní popis - text",
+     screen: "Datum, čas a místo nehody",
+     fe_type: "inputbox", required_fe: "ne", data_type: "string(255)",
+     codelist: ~, input_from: "RUIAN", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+
+  # ── Witnesses (6 fields) ──────────────────────────────────────────────────
+  - {id: F-070, entity: Witness, attribute: "Spolujezdec/anebo",
+     screen: "Svědci nehody",
+     fe_type: "checkbox", required_fe: "ne", data_type: "boolean",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+  - {id: F-071, entity: Witness, attribute: "Příslušnost s vozidlem ke",
+     screen: "Svědci nehody",
+     fe_type: "combobox", required_fe: "ano", data_type: "string(48)",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+  - {id: F-072, entity: Witness, attribute: "Jméno",
+     screen: "Svědci nehody",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(48)",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+  - {id: F-073, entity: Witness, attribute: "Příjmení",
+     screen: "Svědci nehody",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(48)",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+  - {id: F-074, entity: Witness, attribute: "Telefon - předvolba",
+     screen: "Svědci nehody",
+     fe_type: "inputbox", required_fe: "ne", data_type: "string(10)",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: "Předvyplnit +420", notes: ~}
+  - {id: F-075, entity: Witness, attribute: "Telefon - číslo",
+     screen: "Svědci nehody",
+     fe_type: "inputbox", required_fe: "ne", data_type: "integer(9)",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: "Lze přidat maximálně 3 svědky nehody", notes: ~}
+
+  # ── Vehicle movement / damage location (4 fields) ─────────────────────────
+  - {id: F-076, entity: ParticipantVehicleMovementDefinition,
+     attribute: "Definice pohybu vozidla A",
+     screen: "Nafocení nehody + SPZ - informace o vozidle A",
+     fe_type: "multichoice", required_fe: "ano", data_type: "string(512)",
+     codelist: "CL-DEFINICE-POHYBU", input_from: "Uživatel",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+  - {id: F-077, entity: ParticipantVehicleMovementDefinition,
+     attribute: "Definice pohybu vozidla N",
+     screen: "Nafocení nehody + SPZ - informace o vozidle N",
+     fe_type: "multichoice", required_fe: "ano", data_type: "string(512)",
+     codelist: "CL-DEFINICE-POHYBU", input_from: "Uživatel",
+     output_to: "Vyplněné PDF", rules: "Multichoice výběr", notes: ~}
+  - {id: F-078, entity: ParticipantVehicleDamageLocation,
+     attribute: "Místo poškození vozidla A",
+     screen: "Nafocení nehody + SPZ - informace o vozidle A",
+     fe_type: "multichoice", required_fe: "ano", data_type: "string(512)",
+     codelist: "CL-POSKOZENI-CASTI", input_from: "Uživatel",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+  - {id: F-079, entity: ParticipantVehicleDamageLocation,
+     attribute: "Místo poškození vozidla N",
+     screen: "Nafocení nehody + SPZ - informace o vozidle N",
+     fe_type: "multichoice", required_fe: "ano", data_type: "string(512)",
+     codelist: "CL-POSKOZENI-CASTI", input_from: "Uživatel",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+
+  # ── Damage description + circumstances (4 fields) ─────────────────────────
+  - {id: F-080, entity: Participant, attribute: "Slovní popis poškození vozidla A",
+     screen: "Nafocení nehody + SPZ - informace o vozidle A",
+     fe_type: "inputbox", required_fe: "ne", data_type: "string(512)",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: "Povinné, pokud není vyfocená žádná fotka vozidla", notes: ~}
+  - {id: F-081, entity: Participant, attribute: "Slovní popis poškození vozidla N",
+     screen: "Nafocení nehody + SPZ - informace o vozidle N",
+     fe_type: "inputbox", required_fe: "ne", data_type: "string(512)",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: "Povinné, pokud není vyfocená žádná fotka vozidla", notes: ~}
+  - {id: F-082, entity: Report, attribute: "Popis nehody (za oba účastníky)",
+     screen: "Okolnosti nehody",
+     fe_type: "inputbox", required_fe: "ne", data_type: "string(512)",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+  - {id: F-083, entity: Report, attribute: "Situační nákres (za oba účastníky)",
+     screen: "Okolnosti nehody",
+     fe_type: "radiobutton", required_fe: "ano", data_type: "string(48)",
+     codelist: "CL-SITUACNI-NAKRES", input_from: "Uživatel",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+
+  # ── VehiclePolicyholder placeholder (20 fields — "aktuálně bez využití") ──
+  # All 20 of these are prepared data structures NOT in MVP scope. Keep ids
+  # stable so they can be activated later without renumbering.
+  - {id: F-084, entity: VehiclePolicyholder, attribute: "Jméno",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "string(48)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle A holder"}
+  - {id: F-085, entity: VehiclePolicyholder, attribute: "Příjmení",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "string(48)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle A holder"}
+  - {id: F-086, entity: VehiclePolicyholder, attribute: "Název firmy (u PO)",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "string(100)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle A holder"}
+  - {id: F-087, entity: VehiclePolicyholder, attribute: "Ulice",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "string(48)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle A holder"}
+  - {id: F-088, entity: VehiclePolicyholder, attribute: "Číslo popisné",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "integer(48)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle A holder"}
+  - {id: F-089, entity: VehiclePolicyholder, attribute: "Číslo orientační",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "integer(48)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle A holder"}
+  - {id: F-090, entity: VehiclePolicyholder, attribute: "Obec",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "string(48)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle A holder"}
+  - {id: F-091, entity: VehiclePolicyholder, attribute: "PSČ",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "integer(5)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle A holder"}
+  - {id: F-092, entity: VehiclePolicyholder, attribute: "Telefon - předvolba",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "string(5)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle A holder"}
+  - {id: F-093, entity: VehiclePolicyholder, attribute: "Telefon - číslo",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "integer(9)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle A holder"}
+  - {id: F-094, entity: VehiclePolicyholder, attribute: "Jméno",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "string(48)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle N holder"}
+  - {id: F-095, entity: VehiclePolicyholder, attribute: "Příjmení",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "string(48)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle N holder"}
+  - {id: F-096, entity: VehiclePolicyholder, attribute: "Název firmy (u PO)",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "string(100)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle N holder"}
+  - {id: F-097, entity: VehiclePolicyholder, attribute: "Ulice",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "string(48)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití. Našeptávač",
+     notes: "Vehicle N holder"}
+  - {id: F-098, entity: VehiclePolicyholder, attribute: "Číslo popisné",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "integer(48)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle N holder"}
+  - {id: F-099, entity: VehiclePolicyholder, attribute: "Číslo orientační",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "integer(48)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle N holder"}
+  - {id: F-100, entity: VehiclePolicyholder, attribute: "Obec",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "string(48)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle N holder"}
+  - {id: F-101, entity: VehiclePolicyholder, attribute: "PSČ",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "integer(5)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle N holder"}
+  - {id: F-102, entity: VehiclePolicyholder, attribute: "Telefon - předvolba",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "string(5)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle N holder"}
+  - {id: F-103, entity: VehiclePolicyholder, attribute: "Telefon - číslo",
+     screen: "n/a", fe_type: "n/a", required_fe: "n/a", data_type: "integer(9)",
+     codelist: ~, input_from: ~, output_to: ~,
+     rules: "Připravené datové struktury, aktuálně bez využití", notes: "Vehicle N holder"}
+
+  # ── Insurance (vehicle A — 4 fields) ──────────────────────────────────────
+  - {id: F-104, entity: Participant, attribute: "Pojišťovna",
+     screen: "Údaje o vozidle - vozidlo A",
+     fe_type: "combobox", required_fe: "ano", data_type: "integer(4)",
+     codelist: "CL-POJISTOVNY", input_from: "AISPOV (Evidence poj. vozidel)",
+     output_to: "Vyplněné PDF",
+     rules: "Našeptávač. Nabídnout pouze pojišťovny s hodnotou STATUS = 'AKT' v číselníku",
+     notes: ~}
+  - {id: F-105, entity: Participant, attribute: "Číslo smlouvy",
+     screen: "Údaje o vozidle - vozidlo A",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(35)",
+     codelist: ~, input_from: "AISPOV (Evidence poj. vozidel)",
+     output_to: "Vyplněné PDF",
+     rules: "Zobrazeno pouze v případě stažení hodnoty z AISPOV; nezobrazeno při manuálním průchodu",
+     notes: ~}
+  - {id: F-106, entity: Participant, attribute: "Číslo zelené karty",
+     screen: "Údaje o vozidle - vozidlo A",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(11)",
+     codelist: ~, input_from: "AISPOV (Evidence poj. vozidel)",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+  - {id: F-107, entity: Participant, attribute: "Je vozidlo pojištění havarijně?",
+     screen: "Údaje o vozidle - vozidlo A",
+     fe_type: "checkbox", required_fe: "ano", data_type: "boolean",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+
+  # ── Insurance (vehicle N — 4 fields) ──────────────────────────────────────
+  - {id: F-108, entity: Participant, attribute: "Pojišťovna",
+     screen: "Údaje o vozidle - vozidlo N",
+     fe_type: "combobox", required_fe: "ano", data_type: "integer(4)",
+     codelist: "CL-POJISTOVNY", input_from: "AISPOV (Evidence poj. vozidel)",
+     output_to: "Vyplněné PDF",
+     rules: "Našeptávač. Nabídnout pouze pojišťovny s hodnotou STATUS = 'AKT'",
+     notes: ~}
+  - {id: F-109, entity: Participant, attribute: "Číslo smlouvy",
+     screen: "Údaje o vozidle - vozidlo N",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(35)",
+     codelist: ~, input_from: "AISPOV (Evidence poj. vozidel)",
+     output_to: "Vyplněné PDF",
+     rules: "Zobrazeno pouze v případě stažení hodnoty z AISPOV", notes: ~}
+  - {id: F-110, entity: Participant, attribute: "Číslo zelené karty",
+     screen: "Údaje o vozidle - vozidlo N",
+     fe_type: "inputbox", required_fe: "ano", data_type: "string(35)",
+     codelist: ~, input_from: "AISPOV (Evidence poj. vozidel)",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+  - {id: F-111, entity: Participant, attribute: "Je vozidlo pojištění havarijně?",
+     screen: "Údaje o vozidle - vozidlo N",
+     fe_type: "checkbox", required_fe: "ano", data_type: "boolean",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+
+  # ── Fault attribution (2 fields) ──────────────────────────────────────────
+  - {id: F-112, entity: Report, attribute: "Kdo zavinil nehodu?",
+     screen: "Souhrn a potvrzení zadaných údajů",
+     fe_type: "radiobutton", required_fe: "ano", data_type: "integer(2)",
+     codelist: "CL-VINIK-NEHODY", input_from: "Uživatel",
+     output_to: "Vyplněné PDF", rules: ~, notes: ~}
+  - {id: F-113, entity: Report, attribute: "Doplňující odůvodnění",
+     screen: "Souhrn a potvrzení zadaných údajů",
+     fe_type: "checkbox", required_fe: "ne", data_type: "boolean",
+     codelist: ~, input_from: "Uživatel", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+
+  # ── Sign — Účastník 1 (4 fields) ──────────────────────────────────────────
+  - {id: F-114, entity: Participant, attribute: "Autorizační kód po podpis - účastník 1",
+     screen: "Podpis (účastníci) pomocí SMS",
+     fe_type: "inputbox", required_fe: "nezobrazeno", data_type: "integer(4)",
+     codelist: ~, input_from: "Uživatel (SMS)", output_to: "Vyplněné PDF",
+     rules: "4 číslený autorizační kód", notes: ~}
+  - {id: F-115, entity: Participant, attribute: "Počet zbývajících pokusů o ověření opakovaného zaslání - účastník 1",
+     screen: "Podpis (účastníci) pomocí SMS",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "integer(1)",
+     codelist: ~, input_from: "Aplikace", output_to: ~,
+     rules: "Defaultní nastaveno na 5", notes: ~}
+  - {id: F-116, entity: Participant, attribute: "Počet zbývajících pokusů o opakování zaslání - účastník 1",
+     screen: "Podpis (účastníci) pomocí SMS",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "integer(1)",
+     codelist: ~, input_from: "Aplikace", output_to: ~,
+     rules: "Defaultní nastaveno na 5", notes: ~}
+  - {id: F-117, entity: Participant, attribute: "Datum a čas podpisu - účastník 1",
+     screen: "Podpis (účastníci) pomocí SMS",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "datetime",
+     codelist: ~, input_from: "Aplikace", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+
+  # ── Sign — Účastník 2 (4 fields) ──────────────────────────────────────────
+  - {id: F-118, entity: Participant, attribute: "Autorizační kód po podpis - účastník 2",
+     screen: "Podpis (účastníci) pomocí SMS",
+     fe_type: "inputbox", required_fe: "nezobrazeno", data_type: "integer(4)",
+     codelist: ~, input_from: "Uživatel (SMS)", output_to: "Vyplněné PDF",
+     rules: "4 číslený autorizační kód", notes: ~}
+  - {id: F-119, entity: Participant, attribute: "Počet zbývajících pokusů o ověření - účastník 2",
+     screen: "Podpis (účastníci) pomocí SMS",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "integer(1)",
+     codelist: ~, input_from: "Aplikace", output_to: ~,
+     rules: "Defaultní nastaveno na 5", notes: ~}
+  - {id: F-120, entity: Participant, attribute: "Počet zbývajících pokusů o opakování zaslání - účastník 2",
+     screen: "Podpis (účastníci) pomocí SMS",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "integer(1)",
+     codelist: ~, input_from: "Aplikace", output_to: ~,
+     rules: "Defaultní nastaveno na 5", notes: ~}
+  - {id: F-121, entity: Participant, attribute: "Datum a čas podpisu - účastník N",
+     screen: "Podpis (účastníci) pomocí SMS",
+     fe_type: "nezobrazeno", required_fe: "nezobrazeno", data_type: "datetime",
+     codelist: ~, input_from: "Aplikace", output_to: "Vyplněné PDF",
+     rules: ~, notes: ~}
+
+# ═════════════════════════════════════════════════════════════════════════════
+# END — 121 entries.
+#
+# To add a new field:
+#   - id: F-122
+#     entity: ...
+#     attribute: ...
+#     screen: ...
+#     ...
+#
+# To add DEMO override for an existing field:
+#   - id: F-008
+#     ...existing keys...
+#     demo_overrides:
+#       rules: "DEMO accepts any 9-digit number; CZ prefix list NOT enforced"
+# ═════════════════════════════════════════════════════════════════════════════

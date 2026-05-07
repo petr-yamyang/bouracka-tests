@@ -1,0 +1,83 @@
+' UML Sequence Diagram — VUP-compliant template
+' Lifelines for actors + integrations; messages with parameters;
+' alt/opt/loop fragments for branches.
+'
+' Render: java -jar plantuml.jar sequence.puml
+
+@startuml sequence-template
+
+title <Flow-ID> — Sequence Diagram (UML 2.5)
+
+skinparam backgroundColor #FFFFFF
+skinparam sequence {
+  ParticipantBackgroundColor #BDD7EE
+  ParticipantBorderColor #1F4E79
+  ActorBackgroundColor #FFF2CC
+  LifeLineBorderColor #7F7F7F
+  ArrowColor #1F4E79
+}
+
+actor "Účastník" as U
+participant "SUT\n(Bouračka)" as SUT
+participant "INT-002\nN8 SMS Gateway" as N8
+database "DB" as DB
+
+' ── PING gate ──────────────────────────────────────────────────────────
+U -> SUT: click "VYPLNIT ZÁZNAM"
+note right: source: photos/IMG_NNNN.jpg
+activate SUT
+
+SUT -> N8: GET /api/v1/sms/ping
+activate N8
+N8 --> SUT: 200 OK { gateway_id }
+deactivate N8
+
+' ── Branch: PING result ────────────────────────────────────────────────
+alt PING OK
+  SUT -> DB: INSERT report (status=NEW)
+  activate DB
+  DB --> SUT: report_id
+  deactivate DB
+  SUT --> U: render screen 02
+else PING NOK
+  SUT --> U: render ERROR.smsGatewayUnavailable
+  deactivate SUT
+  return
+end
+
+' ── Phone OTP loop ────────────────────────────────────────────────────
+loop for each participant in [A, N]
+  U -> SUT: enter phone + click ODESLAT KÓD
+  SUT -> N8: POST /api/v1/sms/send {phone}
+  N8 --> SUT: { message_id, otp_for_test* }
+  note right
+    *Mockoon-only field
+    Real N8 returns no OTP value;
+    test reads from inbound webhook
+  end note
+
+  U -> SUT: enter OTP + click OVĚŘIT
+  SUT -> N8: POST /api/v1/sms/validate {code}
+  N8 --> SUT: { valid: true/false }
+
+  alt valid:true
+    SUT -> DB: UPDATE phone_verified=true
+  else valid:false
+    opt attempts < limit
+      SUT --> U: retry prompt
+    end
+    opt attempts >= limit
+      SUT -> DB: UPDATE status=ERROR/SMS_CODE_ATTEMPTS
+      SUT --> U: render ERROR endpage
+      return
+    end
+  end
+end
+
+opt all participants verified
+  SUT -> DB: UPDATE status=IN_PROGRESS_DRIVERS
+  SUT --> U: render screen 03 (OP scan)
+  deactivate SUT
+end
+
+@enduml

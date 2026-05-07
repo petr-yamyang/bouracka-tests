@@ -1,0 +1,106 @@
+{
+  "info": {
+    "_postman_id": "bouracka-bring-up-smoke-v0.1",
+    "name": "Bouracka — Bring-up smoke (REST surface)",
+    "description": "Postman parity for Bouracka REST API smoke. CP-SUPIN-04 STEP 32. Validates: codelist endpoints (insurance, brands), POST /reports envelope, protected enums (403). Run via Newman: `newman run bouracka-bring-up-smoke.json -e bouracka-DEMO_PROD.postman_environment.json`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "TC-CP-INTEL-001 — insuranceCompanies (200, ≥10 entries)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test('Array length >=10', () => pm.expect(json.length).to.be.at.least(10));",
+              "pm.test('ALLIANZ entry present', () => {",
+              "  const allianz = json.find(x => x.code === 'ALLIANZ');",
+              "  pm.expect(allianz).to.exist;",
+              "  pm.expect(allianz.description).to.match(/^\\d+$/, 'IČO is digits');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/enumerations/insuranceCompanies",
+        "header": [{"key": "Accept", "value": "application/json"}]
+      }
+    },
+    {
+      "name": "TC-CP-INTEL-001b — vehicleBrands (200, ≥200 entries, ŠKODA + OCTAVIA)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test('Array length >=200', () => pm.expect(json.length).to.be.at.least(200));",
+              "pm.test('ŠKODA brand exists with OCTAVIA model', () => {",
+              "  const skoda = json.find(b => b.name === 'ŠKODA');",
+              "  pm.expect(skoda).to.exist;",
+              "  pm.expect(skoda.models).to.include('OCTAVIA');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/enumerations/vehicleBrands"
+      }
+    },
+    {
+      "name": "TC-CP-INTEL-002 — protected enums return 403",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const protectedEnums = ['licenseCategories', 'damageZones', 'movementTypes', 'accidentCauses', 'accidentCategories', 'vehicleCategories', 'documentTypes', 'witnessTypes'];",
+              "// Postman runs items individually — this is symbolic; use Newman pre-request iteration to test all 8",
+              "pm.test('Status 403 (current item)', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/enumerations/licenseCategories"
+      }
+    },
+    {
+      "name": "TC-CP-NEW-F — POST /api/reports returns UUID-v4",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Body contains UUID-v4', () => {",
+              "  const text = pm.response.text();",
+              "  const uuidV4 = /[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;",
+              "  pm.expect(text).to.match(uuidV4);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/reports",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{}"}
+      }
+    }
+  ],
+  "variable": [
+    {"key": "baseUrl", "value": "https://demo.bouracka.cz", "description": "default DEMO; override via env file or BOURACKA_BASE"}
+  ]
+}

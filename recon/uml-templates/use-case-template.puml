@@ -1,0 +1,59 @@
+' UML Use Case diagram — VUP-compliant template
+' Author from a flow folder's photo sequence (bottom-up reconstruction).
+' Source citations REQUIRED on every use case (per L-WORK-6).
+'
+' Render: java -jar plantuml.jar use-case.puml
+'         (or via tools/render-uml.ps1)
+
+@startuml use-case-template
+
+' ── Title + metadata ───────────────────────────────────────────────────
+title <Flow-ID> — Use Cases\n(source: flow folder ref; UML 2.5 compliant)
+
+skinparam backgroundColor #FFFFFF
+skinparam usecase {
+  BackgroundColor #BDD7EE
+  BorderColor #1F4E79
+}
+skinparam actor {
+  BackgroundColor #FFF2CC
+}
+
+' ── Actors ─────────────────────────────────────────────────────────────
+:Účastník A: as UA
+:Účastník N: as UN
+:SUT — Bouračka: as SUT
+:N8 SMS Gateway: as N8 #lightgrey
+:AISPOV: as AISPOV #lightgrey
+:zenID: as ZID #lightgrey
+
+' ── Use cases (every UC cites source photo) ────────────────────────────
+package "TT-CP-R1-A1 — Vstupní brána" {
+  ' source: flow-A1-main-tst/photos/IMG_NNNN.jpg
+  usecase "Click VYPLNIT ZÁZNAM" as UC1
+  ' source: flow-A1-main-tst/photos/IMG_NNNN.jpg
+  usecase "PING SMS Gateway" as UC2
+}
+
+package "TT-CP-R1-A2 — Phone-OTP" {
+  ' source: flow-A2-main-tst/photos/IMG_NNNN.jpg
+  usecase "Zadat tel. číslo" as UC3
+  usecase "Ověřit OTP" as UC4
+}
+
+' ── Relationships ──────────────────────────────────────────────────────
+UA --> UC1
+UC1 ..> UC2 : <<include>>
+UC2 ..> N8 : <<include>>
+UA --> UC3
+UC3 ..> UC4 : <<include>>
+UC4 ..> N8 : <<include>>
+UN --> UC3 : (via SMS link to second device)
+
+' ── Notes ──────────────────────────────────────────────────────────────
+note bottom of UC2
+  Pre-flight gate per analytical doc
+  p27/133 §3.1; if NOK → ERROR.smsGatewayUnavailable
+end note
+
+@enduml

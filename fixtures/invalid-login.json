@@ -1,0 +1,14 @@
+{
+  "_id": "TD-CP-001",
+  "_purpose": "Static fixture for the re-scoped TC-CP-001/002 (gateway smoke + police-call branch) — placeholder retained because the upstream TestCase ID labels still reference 'login' until OQ-CP-12 closes.",
+  "_note": "No real authentication exists on public bouracka.cz; this file is non-secret and committed.",
+  "wrong_phone": "+420 000 000 000",
+  "wrong_email": "no-such-account@example.invalid",
+  "wrong_otp": "999999",
+  "expected_message_patterns_cs": [
+    "Neplatné",
+    "Chyba",
+    "Zkuste to prosím",
+    "není"
+  ]
+}

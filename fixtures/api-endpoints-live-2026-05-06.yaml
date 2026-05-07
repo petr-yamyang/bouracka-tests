@@ -1,0 +1,100 @@
+# Bouračka — Live-discovered API endpoints — 2026-05-06
+# ─────────────────────────────────────────────────────────────────────────────
+# Source : Claude in Chrome network panel during DEMO walk 2026-05-06
+# Status : Tier 2a evidence — observed on demo.bouracka.cz
+# Purpose: Authoritative endpoint catalogue for INT-008 contract spec; feeds
+#          into Mockoon profile expansion + Playwright API-contract tests.
+# ─────────────────────────────────────────────────────────────────────────────
+
+meta:
+  schema_version: 0.1.0
+  capture_session: CP-SUPIN-04 STEP 9-10
+  base_url_demo: https://demo.bouracka.cz
+  base_url_prod_expected: https://bouracka.cz  # not yet observed
+  total_endpoints: 23
+  third_party_endpoints: 5
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Internal /api/* — Bouračka backend (INT-008)
+# ─────────────────────────────────────────────────────────────────────────────
+
+internal:
+
+  # Reports lifecycle
+  - {verb: POST,  path: /api/reports,                                                   purpose: "create new accident report; returns UUID",                                triggered_at: "click Rozumím on /informations"}
+  - {verb: GET,   path: /api/reports/{reportUuid},                                      purpose: "fetch full report state (hydration)",                                     triggered_at: "every route mount"}
+  - {verb: GET,   path: /api/reports/{reportUuid}/completenessStatus,                   purpose: "per-section completeness map (drives progress bar)",                      triggered_at: "Phase 2 recap submit"}
+
+  # Phase 1 — Verification
+  - {verb: PUT,   path: /api/reports/{reportUuid}/reporter,                             purpose: "save reporter (participant A) phone — first PUT in flow",                triggered_at: "Phase 1 'Odeslat kód' for A"}
+  - {verb: POST,  path: /api/reports/{reportUuid}/participants,                         purpose: "create participant B (B is added after A is verified)",                  triggered_at: "Phase 1 'Odeslat kód' for B"}
+  - {verb: GET,   path: /api/reports/{reportUuid}/participantsInVerification,           purpose: "fetch verification state for both participants",                          triggered_at: "verification-screen mount + after each verify"}
+  - {verb: GET,   path: /api/reports/{reportUuid}/participants,                         purpose: "fetch all participants",                                                  triggered_at: "post-verification + per-recap"}
+  - {verb: POST,  path: /api/reports/{reportUuid}/participants/{participantUuid}/sendCodeToVerify,  purpose: "trigger OTP send (no-op on DEMO)", triggered_at: "Phase 1 'Odeslat kód'"}
+  - {verb: POST,  path: /api/reports/{reportUuid}/participants/{participantUuid}/verify,           purpose: "submit OTP for verification (DEMO accepts any 4-digit)", triggered_at: "Phase 1 'Ověřit'"}
+  - {verb: POST,  path: /api/session/refresh,                                           purpose: "rotate session token at phase boundary",                                   triggered_at: "after each verify-success + recap-save"}
+
+  # Phase 2 — Documents (per participant)
+  - {verb: GET,   path: /api/reports/{reportUuid}/participants/{participantUuid},       purpose: "fetch single participant data",                                            triggered_at: "Phase 2 manual-form mount"}
+  - {verb: PUT,   path: /api/reports/{reportUuid}/participants/{participantUuid}/participantData,  purpose: "save personal data (jméno, příjmení, OP, dob, address)",       triggered_at: "Phase 2 form submit"}
+  - {verb: PUT,   path: /api/reports/{reportUuid}/participants/{participantUuid}/email, purpose: "save email (separate PUT — email change is its own state)",                triggered_at: "Phase 2 recap 'Uložit'"}
+  - {verb: PUT,   path: /api/reports/{reportUuid}/participants/{participantUuid}/drivingLicense/update,  purpose: "save ŘP (number, categories)",                       triggered_at: "Phase 2 form submit"}
+
+  # Phase 2.5 — Witnesses
+  - {verb: GET,   path: /api/reports/{reportUuid}/witnesses,                            purpose: "fetch witnesses list",                                                     triggered_at: "witness-screen mount"}
+  # POST/PUT for witnesses TBC — not yet exercised
+
+  # Phase 3 — Damage
+  - {verb: PUT,   path: /api/reports/{reportUuid}/participants/{participantUuid}/damage, purpose: "save damage description + zones",                                         triggered_at: "Phase 3 damage-form submit"}
+  - {verb: PUT,   path: /api/reports/{reportUuid}/participants/{participantUuid}/movementDefinition, purpose: "save vehicle-movement choice",                              triggered_at: "Phase 3 movement-form submit"}
+  # vehicle data PUT TBC — about to be observed in next walk
+  # SPZ photo POST TBC
+
+  # Phase 4 — Signing TBC
+
+  # Codelists / enumerations
+  - {verb: GET,   path: /api/enumerations/insuranceCompanies,                           purpose: "list of motor-TPL insurers",                                              response_count: 13}
+  - {verb: GET,   path: /api/enumerations/vehicleBrands,                                purpose: "complete vehicle brands+models catalogue",                                response_count: 275, payload_size_kb: 32}
+  - {verb: GET,   path: /api/enumerations/licenseCategories,                            purpose: "ŘP categories",                                                            status: 403, notes: "endpoint protected; codelist arrives via bundle JS instead"}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Third-party
+# ─────────────────────────────────────────────────────────────────────────────
+
+third_party:
+
+  - {verb: GET,   url: "https://bourackaodstavky78861.z6.web.core.windows.net/odstavky.json",                                                purpose: "outage-announcements feed (Azure Static Web)", int: INT-006}
+  - {verb: GET,   url: "https://maps.googleapis.com/maps-api-v3/api/js/64/11d/intl/en_gb/{common,map,util}.js",                              purpose: "Google Maps JS bundle (locale-jammed to en_gb)",  int: INT-007}
+  - {verb: GET,   url: "https://www.google.com/recaptcha/api2/clr?k=6Lfbao4sAAAAANfSk_-NcqLZPYB8wdMvrBS4qM5p",                                purpose: "reCAPTCHA client log report (returns 503 — non-blocking)", int: INT-001}
+  - {verb: GET,   url: "https://ags.cuzk.cz/arcgis/rest/services/RUIAN/MapServer/exts/GeocodeSOE/tables/1/suggest?text={q}&f=json",          purpose: "RUIAN address autocomplete (ČÚZK ArcGIS)",        int: INT-009}
+  - {verb: GET,   url: "https://ags.cuzk.cz/arcgis/rest/services/RUIAN/Vyhledavaci_sluzba_nad_daty_RUIAN/MapServer/1/query?adresa={a}&magicKey={k}&outFields=*&f=json",  purpose: "RUIAN full address resolution after autocomplete-pick", int: INT-009}
+  - {verb: GET,   url: "https://ags.cuzk.cz/arcgis/rest/services/RUIAN/MapServer/4/query?where=kod={code}&outFields=nazev&f=json",            purpose: "RUIAN obec/kraj lookup by code",                  int: INT-009}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Bundle / asset URLs (Vite hashed; per-route lazy)
+# ─────────────────────────────────────────────────────────────────────────────
+
+bundles_observed:
+  routes:
+    rozcestnik:    [index-CZZXqFaQ.js, AlertWrapper-B8cKqLmR.js, useRecaptcha-XKNW0Bel.js]
+    informations:  [informations-D1Jrhrhq.js]
+    verification:  [VerifyCode-nIV1di_B.js, VerifiedUser-DJOVLjro.js, useIsFetching-DxOtLLvl.js, FormCheckbox-CR7ygL4S.js, route-Cin2rekH.js]
+    documents:     [manual-BA4ODE-G.js, UserDataPage-CFn6m5y1.js, Row-CfmzZE_1.js, addressFormatter-BUKVLbbz.js, EditRounded-Be9Irwty.js, FormDatePicker-BTisidzY.js, DesktopDatePicker-VnsEbIlP.js, transformEmptyStrings-BGcTUKvZ.js]
+    success:       [success-BR6p0SQu.js, route-CF73b27P.js]
+    witness:       [index-z0aQyQgr.js, FormRadioGroup-jeZwSfvv.js, RadioGroup-BwGCTwjF.js, Edit-CcYCEOIC.js]
+    accident_photos: [index-buiJVE_I.js, CircumstancesPage-D8oqlObm.js, AccidentHeader-DkxZdJaq.js, VehicleInsurerSection-H5e0289x.js, useMobilePicker-C3IggjMi.js, ImagePreview-DZGSZjK-.js]
+    accident_movement: [index-BGi72on-.js, DamageSelectorSection-BFSTC_Om.js]
+    accident_data: [data-Bg9E-irf.js]
+    misc_recap: [recap-CSzrUqLj.js]
+    misc_movement: [movement-CX5KLEhP.js]
+  static_assets:
+    flags: [CZ.svg]
+    icons: [48.png]
+    diagrams: [car_front.svg, car_rear.svg, car-damage.svg, cars-accident.svg]
+    demo_videos:
+      - bouracka-screen-spz1.{low,med,full}.mp4
+      - bouracka-screen-spz2.{low,med,full}.mp4
+      - bouracka-screen-op-predni1.{low,med,full}.mp4
+      - bouracka-screen-op-predni2.{low,med,full}.mp4
+      - bouracka-screen-op-zadni1.{low,med,full}.mp4
+      - bouracka-screen-op-zadni2.{low,med,full}.mp4

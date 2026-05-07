@@ -1,0 +1,23 @@
+{
+  "id": "ENV-TST",
+  "label": "tst",
+  "base_url": "https://tst.bouracka.cz",
+  "network_reach": "supin-internal",
+  "locale": "cs_CZ",
+  "browser_default": "chromium",
+  "recaptcha_posture": "BYPASS_TOKEN",
+  "recaptcha_bypass_token": null,
+  "sms_hook_url": null,
+  "smtp_hook_url": null,
+  "registry_stub_url": null,
+  "selectors": {
+    "_INHERIT_FROM": "public.json",
+    "_OVERRIDES_BELOW": "if any divergence is observed, override here"
+  },
+  "expected": {
+    "title_landing_regex": "Bouračka",
+    "gateway_h1_regex": "dopravní nehoda",
+    "police_conditions_count": 7
+  },
+  "notes": "Reachable only from inside SUPIN's network (tester laptops). User-supplied recon templates fill divergences as they arrive. Selector overrides go here when SCR-NNN.md flags one."
+}

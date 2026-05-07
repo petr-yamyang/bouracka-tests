@@ -1,0 +1,115 @@
+# Test photos — paths to local-only test snippets
+# Per CP-SUPIN-05 v0.5.0+ Cross-framework data sharing convention.
+#
+# IMPORTANT: This file references RELATIVE paths to photos that live OUTSIDE the
+# test kit ZIP — in `analyticke vstupy/test-data-snippets/` (Pete's local raw
+# analytical inputs folder). The ZIP itself stays under email-scanner size limits
+# (~700 KB). Photos are 164 MB total — not shippable via email.
+#
+# Tester (HP Elite <test-runner-host>) gets photos via separate channel:
+#   - SUPIN intranet share, OR
+#   - USB drop, OR
+#   - Cloud share (one-time URL with SHA256 manifest)
+# Path convention assumes photos extracted to: ..\..\analyticke vstupy\test-data-snippets\
+# relative to bouracka-tests/ root (i.e. sibling folder one level up).
+
+# ── OP (občanský průkaz) test ID — SPECIMEN/VZOR cards, no real PII ──────────
+op_specimen:
+  - name: OP1-front
+    path: "../../analyticke vstupy/test-data-snippets/OP - test ID s/OP1/20250625_140816.jpg"
+    description: "Czech ID card SPECIMEN — front view"
+    mrz_data:
+      country: "CZE"
+      doc_number: "998007351"
+      checksum_doc: "2"
+      birth_date_yymmdd: "811008"
+      sex: "F"
+      expiry_yymmdd: "240304"
+      surname_marker: "SPECIMEN<<VZOR<<<"
+    holder_visible:
+      address: "Ústí nad Labem, Trmice, Pražská č.p. 257/54"
+      birth_number_cs: "816008/0610"
+      title: "Mgr."
+      marital_status: "vdaná"
+      issued_by: "Magistrát města Ústí nad Labem"
+    intended_for:
+      - "TT-FUNC-003 — Sběr dokumentů (zenID OCR scenario)"
+      - "Phase 2 documents A — happy path with zenID"
+      - "compare against manual fallback values"
+  - name: OP1-side2
+    path: "../../analyticke vstupy/test-data-snippets/OP - test ID s/OP1/20250625_140825.jpg"
+    description: "Czech ID card SPECIMEN — angle view 1"
+  - name: OP1-side3
+    path: "../../analyticke vstupy/test-data-snippets/OP - test ID s/OP1/20250625_140834.jpg"
+    description: "Czech ID card SPECIMEN — angle view 2"
+
+# ── SPZ (license plates) — for Phase 3 vehicle photo path ─────────────────────
+spz:
+  - name: SPZ-WA0000
+    path: "../../analyticke vstupy/test-data-snippets/SPZ/IMG-20250604-WA0000.jpg"
+    description: "License plate photo (WhatsApp-shrunk, 2048x945)"
+    intended_for:
+      - "TT-ACTV-photo-capture — Phase 3 vehicle photo upload"
+  - name: SPZ-WA0001
+    path: "../../analyticke vstupy/test-data-snippets/SPZ/IMG-20250604-WA0001.jpg"
+  - name: SPZ-Karel
+    path: "../../analyticke vstupy/test-data-snippets/SPZ/Karel.jpg"
+    description: "Cropped plate (397x282) — small fixture for fast tests"
+
+# ── Účastník A — full SPA photo capture set (UUID names = /api/photos output) ─
+participant_a_photos:
+  spz:
+    path: "../../analyticke vstupy/test-data-snippets/fotky/Účastník_A/SPZ.jpg"
+    description: "Vehicle license plate (4000x2252)"
+  damage_photos:
+    - "../../analyticke vstupy/test-data-snippets/fotky/Účastník_A/photo-3b8ea39b-fa09-4381-82e2-494a40d21f53.jpg"
+    - "../../analyticke vstupy/test-data-snippets/fotky/Účastník_A/photo-6cb79cf6-eb76-4b49-a42a-b4ce6c242eb6.jpg"
+    - "../../analyticke vstupy/test-data-snippets/fotky/Účastník_A/photo-b95e2438-3018-4a69-98aa-3d41f57bd412.jpg"
+    - "../../analyticke vstupy/test-data-snippets/fotky/Účastník_A/photo-0c341678-3221-4b98-8e3f-a3d0b543060f.jpg"
+    - "../../analyticke vstupy/test-data-snippets/fotky/Účastník_A/photo-dc245682-107b-4b63-b844-c6a532fda200.jpg"
+    - "../../analyticke vstupy/test-data-snippets/fotky/Účastník_A/photo-d2b35816-dbf6-494d-8b42-5d5fa2abcb92.jpg"
+    - "../../analyticke vstupy/test-data-snippets/fotky/Účastník_A/photo-e7b70e1c-2436-425d-9f47-4afc4e30ee79.jpg"
+    - "../../analyticke vstupy/test-data-snippets/fotky/Účastník_A/photo-2965dfc6-4b89-4d87-96d9-d94010494936.jpg"
+  intended_for:
+    - "TT-FUNC-004 — Foto-evidence škod (Phase 3)"
+    - "Real /api/photos UUID-named output → can be re-uploaded for replay scenarios"
+    - "ALT- variant testing: photo-skip vs photo-include paths"
+
+# ── Účastník B — full SPA photo capture set ───────────────────────────────────
+participant_b_photos:
+  spz:
+    path: "../../analyticke vstupy/test-data-snippets/fotky/Účastník_B/SPZ.jpg"
+    description: "Vehicle B license plate (4000x2252)"
+  damage_photos:
+    - "../../analyticke vstupy/test-data-snippets/fotky/Účastník_B/photo-d675a7d8-7886-46ed-b97e-5f0db3085105.jpg"
+    - "../../analyticke vstupy/test-data-snippets/fotky/Účastník_B/photo-0a14e330-f197-4550-96b6-d975e276e877.jpg"
+    - "../../analyticke vstupy/test-data-snippets/fotky/Účastník_B/photo-46a0c80f-705f-45ba-892d-28afe90cda70.jpg"
+    - "../../analyticke vstupy/test-data-snippets/fotky/Účastník_B/photo-2b1ec445-de60-4fbf-b9a7-6843a454526d.jpg"
+    - "../../analyticke vstupy/test-data-snippets/fotky/Účastník_B/photo-2f7112e1-fe08-44e4-89c8-3b34af455c61.jpg"
+    - "../../analyticke vstupy/test-data-snippets/fotky/Účastník_B/photo-72c82bd3-702b-4995-b6a3-edd82271a165.jpg"
+    - "../../analyticke vstupy/test-data-snippets/fotky/Účastník_B/photo-71b430a4-ff0e-43a2-8731-060006759781.jpg"
+  test_photo:
+    path: "../../analyticke vstupy/test-data-snippets/fotky/Účastník_B/test.jpg"
+    description: "Generic 'test' label photo — for non-damage upload scenarios"
+
+# ── Generic accident scene photos — for damage-assertion testing ──────────────
+generic_accident_scenes:
+  - "../../analyticke vstupy/test-data-snippets/fotky/9004187.jpg"
+  - "../../analyticke vstupy/test-data-snippets/fotky/8946684.jpg"
+  - "../../analyticke vstupy/test-data-snippets/fotky/9222129.jpg"
+  - "../../analyticke vstupy/test-data-snippets/fotky/9293652.jpg"
+  - "../../analyticke vstupy/test-data-snippets/fotky/9222130.jpg"
+  - "../../analyticke vstupy/test-data-snippets/fotky/kv_nehoda_becov_teplicka_hzs_02_20091012_denik-galerie-800.jpg"
+  - "../../analyticke vstupy/test-data-snippets/fotky/kv_nehoda_becov_teplicka_hzs_03_20091012_denik-galerie-800.jpg"
+
+# Provenance + meta
+_meta:
+  version: "v0.1"
+  created_at: "2026-05-07"
+  source: "Pete uploaded 'test data snippets tbd.zip' 2026-05-07 EOD"
+  total_files: 31
+  total_size_bytes: 171_834_000  # ~164 MB
+  shipped_in_kit_zip: false      # too large; staged separately
+  staging_path: "../../analyticke vstupy/test-data-snippets/"
+  pii_status: "SPECIMEN cards + test-only photos; no real PII"
+  schema_link: "_specs/CROSS-FRAMEWORK-DATA-SHARING-v0.1-CS.md"

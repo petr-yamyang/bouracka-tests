@@ -1,0 +1,288 @@
+# Bouračka — Live copy strings catalogue (verbatim CS strings for TC assertions)
+# ─────────────────────────────────────────────────────────────────────────────
+# Source : DEMO live observation (Tier 2a) + planned PROD parallel capture (Tier 2b).
+#          Where a string is captured from BOTH envs, both observed values are
+#          recorded so DEMO-vs-PROD copy drift surfaces immediately.
+# Status : v0.1 — first row landed from operator screenshot 2026-05-06 ~10:05 CET.
+#
+# Each entry follows the shape:
+#   id              : STR-NNN
+#   surface         : where the string lives (route + screen + element)
+#   purpose         : what asserting it proves
+#   observed_demo   : verbatim CS string as captured on DEMO (with capture ref)
+#   observed_prod   : verbatim CS string as captured on PROD (with capture ref)
+#   delta           : identical | differs | unknown
+#   referenced_by   : list of TC codes that assert against this string
+# ─────────────────────────────────────────────────────────────────────────────
+
+meta:
+  schema_version: 0.1.0
+  status: in-progress
+  populated_total: 17
+  populated_demo: 17
+  populated_prod: 0  # populates as PROD photos / live capture lands
+  capture_provenance:
+    - source: operator screenshot 2026-05-06 10:05 CET
+      env: demo.bouracka.cz/formular/
+      viewport: desktop (rozcestník visible above the fold + safety bullets)
+    - source: Claude in Chrome live-walk 2026-05-06 10:08-10:15 CET
+      env: demo.bouracka.cz/formular/{...}
+      viewport: desktop 1568x688
+      route_coverage: rozcestník + /formular/informations + /formular/report/{uuid}/verification
+
+strings:
+
+  - id: STR-001
+    surface:
+      route: /formular/
+      screen: D00_homepage-rozcestnik
+      element: H1 heading (page title above first card)
+    purpose: gateway-page identity assertion; also smoke-test target
+    observed_demo: "Stala se vám dopravní nehoda? To zvládnete."
+    observed_prod: null
+    delta: unknown
+    referenced_by:
+      - TC-CP-001  # bring-up smoke
+      - TC-CP-NEW-A  # rozcestník copy assertions
+
+  - id: STR-002
+    surface:
+      route: /formular/
+      screen: D00_homepage-rozcestnik
+      element: persistent orange DEMO-version warning banner
+    purpose: confirms DEMO env (Δ11); ALSO catches a PROD-bundle leak into DEMO if banner is absent
+    observed_demo: |
+      Nacházíte se v DEMO VERZI aplikace. Všechny údaje v této verzi jsou pouze
+      ukázkové. Formulář si můžete bezpečně vyzkoušet bez zadávání reálných údajů.
+    observed_prod: null  # PROD does NOT show this banner — assertion: absent
+    delta: differs  # by design — PROD MUST NOT render this string
+    referenced_by:
+      - TC-CP-NEW-A  # DEMO branding integrity
+
+  - id: STR-003
+    surface:
+      route: /formular/
+      screen: D00_homepage-rozcestnik
+      element: card "Záznam o dopravní nehodě" — subtitle (R1-scope description)
+    purpose: codifies R1 legal/business scope; legislative anchor (200 000 Kč cap)
+    observed_demo: |
+      Vhodné pro malé nehody bez zranění a škody do 200 000 Kč vzniklé mezi 2
+      účastníky s českými občanskými průkazy.
+    observed_prod: null
+    delta: unknown  # expected identical (same bundle); confirm on PROD capture
+    referenced_by:
+      - TC-CP-NEW-B  # R1 scope-sentence assertion (catches threshold change)
+
+  - id: STR-004
+    surface:
+      route: /formular/
+      screen: D00_homepage-rozcestnik
+      element: primary CTA button (full-width blue)
+    purpose: smoke-test target; confirms entry-point button label
+    observed_demo: "VYPLNIT ZÁZNAM"
+    observed_prod: null  # known from earlier public-PROD recon to also be "VYPLNIT ZÁZNAM"
+    delta: unknown  # expected identical; confirm on PROD capture
+    referenced_by:
+      - TC-CP-001  # bring-up smoke
+
+  - id: STR-005
+    surface:
+      route: /formular/
+      screen: D00_homepage-rozcestnik
+      element: emergency-exit card title
+    purpose: presence assertion for the emergency-call escape hatch
+    observed_demo: "Potřebujete okamžitou pomoc?"
+    observed_prod: null
+    delta: unknown
+    referenced_by:
+      - TC-CP-NEW-A  # rozcestník copy assertions
+
+  - id: STR-006
+    surface:
+      route: /formular/informations
+      screen: D-INFO_co-vas-ceka
+      element: H1 heading
+    purpose: pre-wizard intro identity assertion
+    observed_demo: "Co vás čeká?"
+    observed_prod: null
+    delta: unknown
+    referenced_by:
+      - TC-CP-NEW-E
+
+  - id: STR-007
+    surface:
+      route: /formular/informations
+      screen: D-INFO_co-vas-ceka
+      element: blue info box (sub-heading + body)
+    purpose: codifies single-filler-both-recipients constraint
+    observed_demo: |
+      Formulář vyplňuje vždy jen jeden účastník.
+      Potvrzení obdrží oba účastníci e-mailem.
+    observed_prod: null
+    delta: unknown
+    referenced_by:
+      - TC-CP-NEW-E
+
+  - id: STR-008-1
+    surface:
+      route: /formular/informations
+      screen: D-INFO_co-vas-ceka
+      element: 5-step list — step 1 of 5
+    purpose: phase-1 label assertion (Telefonní čísla)
+    observed_demo: "Telefonní čísla — Ověříme telefonní čísla obou účastníků."
+    observed_prod: null
+    delta: unknown
+    referenced_by:
+      - TC-CP-NEW-E
+
+  - id: STR-008-2
+    surface:
+      route: /formular/informations
+      element: 5-step list — step 2 of 5
+    purpose: phase-2 label
+    observed_demo: "Základní údaje — Vyplníte osobní a technické údaje potřebné k záznamu."
+    observed_prod: null
+    delta: unknown
+    referenced_by:
+      - TC-CP-NEW-E
+
+  - id: STR-008-3
+    surface:
+      route: /formular/informations
+      element: 5-step list — step 3 of 5
+    purpose: phase-3 label
+    observed_demo: "Fotografie a popis nehody — Vyfotíte poškození obou vozidel a krátce popíšete situaci."
+    observed_prod: null
+    delta: unknown
+    referenced_by:
+      - TC-CP-NEW-E
+
+  - id: STR-008-4
+    surface:
+      route: /formular/informations
+      element: 5-step list — step 4 of 5
+    purpose: phase-4 label; explicitly mentions SMS at signing
+    observed_demo: "Potvrzení — Každý z účastníků obdrží SMS s ověřovacím kódem pro podpis záznamu."
+    observed_prod: null
+    delta: unknown  # potential PROD deviation if SMS suppressed; expected identical copy
+    referenced_by:
+      - TC-CP-NEW-E
+
+  - id: STR-008-5
+    surface:
+      route: /formular/informations
+      element: 5-step list — step 5 of 5 (terminal)
+    purpose: success-state preview
+    observed_demo: "Hotovo — Záznam dostanou oba účastníci e-mailem a bude i ke stažení jako PDF."
+    observed_prod: null
+    delta: unknown
+    referenced_by:
+      - TC-CP-NEW-E
+
+  - id: STR-009
+    surface:
+      route: /formular/informations
+      element: CTA button (acknowledges the intro)
+    purpose: smoke-test target
+    observed_demo: "Rozumím"
+    observed_prod: null
+    delta: unknown
+    referenced_by:
+      - TC-CP-NEW-E
+
+  - id: STR-010
+    surface:
+      route: /formular/report/{uuid}/verification
+      screen: D-VERIF_phase-1
+      element: H1 heading
+    purpose: phase-1 identity assertion
+    observed_demo: "Ověřte účastníky nehody"
+    observed_prod: null
+    delta: unknown
+    referenced_by:
+      - TC-CP-NEW-G  # deep-link to verification
+
+  - id: STR-011
+    surface:
+      route: /formular/report/{uuid}/verification
+      element: body paragraph 1
+    purpose: explains SMS-OTP step (will diverge on DEMO vs PROD)
+    observed_demo: "Ověřte telefonní čísla obou účastníků nehody pomocí kódu, který vám postupně zašleme v SMS."
+    observed_prod: null
+    delta: unknown  # copy probably identical; *behaviour* differs
+    referenced_by:
+      - TC-CP-005  # SMS-gate
+      - TC-CP-005-PROD
+
+  - id: STR-012
+    surface:
+      route: /formular/report/{uuid}/verification
+      element: body paragraph 2
+    purpose: phone numbers reused for end-of-flow signature
+    observed_demo: "Čísla budou následně sloužit i pro zaslání kódu pro podpis záznamu."
+    observed_prod: null
+    delta: unknown
+    referenced_by: []
+
+  - id: STR-013
+    surface:
+      route: /formular/report/{uuid}/verification
+      element: body paragraph 3 (data-deletion warning)
+    purpose: GDPR-aligned data-purge guarantee
+    observed_demo: |
+      Pokud nedojde k závěrečnému oboustrannému potvrzení, všechna zadaná
+      data včetně kontaktů budou smazána bez uložení.
+    observed_prod: null
+    delta: unknown
+    referenced_by:
+      - TC-CP-NEW-K  # PROPOSED: data-purge-on-abandon assertion
+
+  - id: STR-014
+    surface:
+      route: /formular/report/{uuid}/verification
+      element: yellow/orange DEMO hint box
+    purpose: confirms Δ1 (N8 SMS Gateway delta); CSI-grade evidence DEMO is on
+    observed_demo: |
+      Zadejte libovolné české nebo slovenské mobilní telefonní číslo. Demoverze
+      žádné SMS neodesílá, potvrzovací kód bude v dalším kroku automaticky doplněn.
+    observed_prod: null  # MUST be absent on PROD; assertion: absent
+    delta: differs  # by design — only on DEMO
+    referenced_by:
+      - TC-CP-005  # SMS-gate (DEMO hint presence asserts DEMO env)
+      - TC-CP-NEW-J  # asserts hint absent on PROD
+
+  - id: STR-015
+    surface:
+      route: /formular/report/{uuid}/verification
+      element: phone-input format helper text
+    purpose: regex-derivation source for the phone validator
+    observed_demo: "Formát čísla: 608 323 999"
+    observed_prod: null
+    delta: unknown
+    referenced_by:
+      - TC-CP-018  # validation rule
+
+  - id: STR-016
+    surface:
+      route: /formular/report/{uuid}/verification
+      element: GDPR checkbox label
+    purpose: legal/UX assertion; underlying link is /formular/personal-data
+    observed_demo: "Seznámil/a jsem se s poučením o zpracování osobních údajů"
+    observed_prod: null
+    delta: unknown
+    referenced_by:
+      - TC-CP-NEW-I  # checkbox-required
+
+  - id: STR-017
+    surface:
+      route: /formular/report/{uuid}/verification
+      element: submit button
+    purpose: smoke-test target; phase-1 submit
+    observed_demo: "Odeslat kód"
+    observed_prod: null
+    delta: unknown
+    referenced_by:
+      - TC-CP-005
+
+# Future entries land as DOM/network capture proceeds via Claude in Chrome.
+# Wizard phases 1 (post-submit), 2, 3, 4 populate STR-018..STR-NNN in increment.

@@ -1,0 +1,130 @@
+# Bouračka — Codelist (Číselníky) Catalogue
+# ─────────────────────────────────────────────────────────────────────────────
+# Source : SUPIN_Bouracka_summary_ANA_v6.xlsx, tab "Číselníky" (third tab,
+#          NOT YET captured in photos — placeholder shells for the 8 codelists
+#          referenced from fixtures/field-definitions.yaml)
+# Status : Skeleton — values populated as photos of the Číselníky tab arrive.
+#
+# Each codelist follows the same shape:
+#   id            : CL-NAME (matches field-definitions.codelist)
+#   name_cs       : human name in CS
+#   referenced_by : list of F-NNN ids that use this codelist
+#   status_field  : (optional) for Pojišťovny — has STATUS=AKT/INA filter
+#   values        : list of {code, label_cs, label_en, status?}
+# ─────────────────────────────────────────────────────────────────────────────
+
+meta:
+  schema_version: 0.1.0
+  source_workbook: SUPIN_Bouracka_summary_ANA_v6.xlsx
+  source_tab: Číselníky
+  status: skeleton
+  total_codelists: 8
+  populated: 0    # update as photos arrive
+
+codelists:
+
+  - id: CL-STAVY-HLASENI
+    name_cs: Stavy hlášení
+    name_en: Report status
+    referenced_by: [F-004]
+    notes: |
+      The accidentReportStatus state machine. Values inferred from
+      the analytical doc text (not yet from the Číselníky tab):
+        NEW
+        IN_PROGRESS_DRIVERS
+        IN_PROGRESS_VEHICLES
+        IN_PROGRESS_CIRCUMSTANCES
+        TO_SIGN
+        FINISHED
+        CANCEL
+        ERROR
+      ERROR has documented sub-reasons in
+      ANALYTICAL-DOC-INTELLIGENCE-v0.2.md §2.7.
+    values: []   # populate from Obrazovky stavy tab when photographed
+
+  - id: CL-ZNACKY-MODEL
+    name_cs: Značky a model
+    name_en: Vehicle make + model
+    referenced_by: [F-020, F-021, F-025, F-026]
+    notes: |
+      Sourced from AISPOV (CRV). 5 free-text overflow slots allowed.
+      Model is filtered by selected Značka — must capture the
+      relation table.
+    values: []
+
+  - id: CL-SKUPINY-OPRAVNENI
+    name_cs: Skupiny řidičských oprávnění
+    name_en: License categories
+    referenced_by: [F-042, F-057]
+    notes: |
+      EU license categories. Inferred from field length string(128)
+      and the reference photo (IMG_1051) showing
+      "A, A1, B, BE, C, CE, C1E" for one driver.
+      Sourced from AISPOV (CRR).
+    values:
+      # likely set; confirm against Číselníky tab
+      - {code: AM, label_cs: "Mopedy do 50 cm³", label_en: "Mopeds up to 50cc"}
+      - {code: A1, label_cs: "Lehké motocykly do 125 cm³", label_en: "Light motorcycles up to 125cc"}
+      - {code: A2, label_cs: "Motocykly do 35 kW", label_en: "Motorcycles up to 35 kW"}
+      - {code: A,  label_cs: "Motocykly nad 35 kW", label_en: "All motorcycles"}
+      - {code: B1, label_cs: "Tříkolky a čtyřkolky", label_en: "Trikes/quads"}
+      - {code: B,  label_cs: "Osobní auta do 3,5 t", label_en: "Cars up to 3.5 t"}
+      - {code: BE, label_cs: "Osobní auta s přívěsem nad 750 kg", label_en: "B + heavy trailer"}
+      - {code: C1, label_cs: "Nákladní auta 3,5–7,5 t", label_en: "Trucks 3.5–7.5 t"}
+      - {code: C1E,label_cs: "C1 s přívěsem nad 750 kg", label_en: "C1 + heavy trailer"}
+      - {code: C,  label_cs: "Nákladní auta nad 7,5 t", label_en: "Trucks over 7.5 t"}
+      - {code: CE, label_cs: "C s přívěsem nad 750 kg", label_en: "C + heavy trailer"}
+      - {code: D1, label_cs: "Mikrobusy do 16 osob", label_en: "Mini-buses up to 16"}
+      - {code: D1E,label_cs: "D1 s přívěsem nad 750 kg", label_en: "D1 + heavy trailer"}
+      - {code: D,  label_cs: "Autobusy", label_en: "Buses"}
+      - {code: DE, label_cs: "D s přívěsem nad 750 kg", label_en: "D + heavy trailer"}
+      - {code: T,  label_cs: "Traktory a samojízdné stroje", label_en: "Tractors and self-propelled machinery"}
+
+  - id: CL-DEFINICE-POHYBU
+    name_cs: Definice pohybů vozidla
+    name_en: Vehicle movement definition
+    referenced_by: [F-076, F-077]
+    notes: |
+      EU damage-form predefined set (the European Accident Statement
+      §13 "Manoeuvre" 17 boxes). Multichoice. To be confirmed from
+      Číselníky tab.
+    values: []
+
+  - id: CL-POSKOZENI-CASTI
+    name_cs: Poškození částí vozidla
+    name_en: Damaged vehicle parts
+    referenced_by: [F-078, F-079]
+    notes: |
+      Vehicle-outline marker positions (8-direction arrows visible in
+      analytical doc IMG_1052). To be confirmed from Číselníky tab.
+    values: []
+
+  - id: CL-SITUACNI-NAKRES
+    name_cs: Situační nákres
+    name_en: Collision-position diagram
+    referenced_by: [F-083]
+    notes: |
+      Predefined collision-situation sketch templates. Radiobutton.
+      To be confirmed from Číselníky tab.
+    values: []
+
+  - id: CL-POJISTOVNY
+    name_cs: Pojišťovny
+    name_en: Insurance companies
+    referenced_by: [F-104, F-108]
+    status_field: STATUS    # filter: only show STATUS=AKT to user
+    notes: |
+      Sourced from AISPOV (Evidence poj. vozidel). Has STATUS field
+      with at least values 'AKT' (active) and presumably 'INA'
+      (inactive). Code is integer(4). Labels are insurance company
+      names. To be confirmed from Číselníky tab.
+    values: []
+
+  - id: CL-VINIK-NEHODY
+    name_cs: Viník nehody
+    name_en: Accident fault party
+    referenced_by: [F-112]
+    notes: |
+      Radiobutton; integer(2). Likely: účastník A / účastník N /
+      žádný-z-účastníků / neurčeno. To be confirmed from Číselníky tab.
+    values: []

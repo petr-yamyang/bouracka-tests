@@ -1,0 +1,111 @@
+digraph TT {
+  graph [layout=twopi, root="center", overlap=false, splines=true,
+         ranksep="2.0 1.6 1.4 1.2", bgcolor="white",
+         fontname="Arial", fontsize=10, label=<
+<B>Bouračka — TestTargets scope (R1 + R2)</B><BR/>
+<FONT POINT-SIZE="9">
+7 R1 (active) + 11 R2 (deferred) 
+· colour = priority (A=red B=yellow C=green D=gray) 
+· border = release (blue=R1 gray=R2)
+</FONT>>, labelloc="t"];
+  node [fontname="Arial", fontsize=10, style="filled,rounded",
+        shape=box, penwidth=2];
+  edge [color="#7F7F7F", arrowhead=none];
+
+  center [label=<<B>Bouračka</B><BR/><FONT POINT-SIZE="9">tst.bouracka.cz<BR/>tst.demo.bouracka.cz</FONT>>,
+          shape=circle, fillcolor="#1F4E79", fontcolor="white",
+          width=1.6, fixedsize=true];
+
+  hub_r1_auth [label="Vstup + Auth\n(SMS PING + OTP)",
+                shape=box, fillcolor="#BDD7EE",
+                fontcolor="#1F4E79", penwidth=2,
+                color="#1F4E79", style="filled,rounded,bold"];
+  center -> hub_r1_auth;
+  hub_r1_driver [label="Driver data\n(zenID + AISPOV ROB/CRR)",
+                shape=box, fillcolor="#BDD7EE",
+                fontcolor="#1F4E79", penwidth=2,
+                color="#1F4E79", style="filled,rounded,bold"];
+  center -> hub_r1_driver;
+  hub_r1_vehicle [label="Vehicle data\n(zenID + AISPOV CRV/Pojištění)",
+                shape=box, fillcolor="#BDD7EE",
+                fontcolor="#1F4E79", penwidth=2,
+                color="#1F4E79", style="filled,rounded,bold"];
+  center -> hub_r1_vehicle;
+  hub_r1_sign [label="Sign + Complete\n(SMS-OTP + e-mail)",
+                shape=box, fillcolor="#BDD7EE",
+                fontcolor="#1F4E79", penwidth=2,
+                color="#1F4E79", style="filled,rounded,bold"];
+  center -> hub_r1_sign;
+  hub_r1_e2e [label="E2E orchestration",
+                shape=box, fillcolor="#BDD7EE",
+                fontcolor="#1F4E79", penwidth=2,
+                color="#1F4E79", style="filled,rounded,bold"];
+  center -> hub_r1_e2e;
+  hub_r1_failures [label="Failure envelope",
+                shape=box, fillcolor="#BDD7EE",
+                fontcolor="#1F4E79", penwidth=2,
+                color="#1F4E79", style="filled,rounded,bold"];
+  center -> hub_r1_failures;
+
+  hub_r2 [label="R2 — deferred\n(11 TestTargets)",
+          shape=box, fillcolor="#D9D9D9",
+          fontcolor="#404040", style="filled,rounded,dashed",
+          color="#7F7F7F", penwidth=2];
+  center -> hub_r2;
+
+  TT_CP_R1_A1 [label=<<B>TT-CP-R1-A1</B><BR/><FONT POINT-SIZE="9">Vstupní brána a SMS-PING (screen 01)</FONT><BR/><FONT POINT-SIZE="8" COLOR="#404040">→ NEW</FONT><BR/><FONT POINT-SIZE="8" COLOR="#7F7F7F">Pri A</FONT>>, fillcolor="#F4B084",
+           color="#1F4E79"];
+  hub_r1_auth -> TT_CP_R1_A1;
+  TT_CP_R1_A2 [label=<<B>TT-CP-R1-A2</B><BR/><FONT POINT-SIZE="9">Ověření telefonních čísel (screen 02)</FONT><BR/><FONT POINT-SIZE="8" COLOR="#404040">→ IN_PROGRESS_DRIVERS</FONT><BR/><FONT POINT-SIZE="8" COLOR="#7F7F7F">Pri A</FONT>>, fillcolor="#F4B084",
+           color="#1F4E79"];
+  hub_r1_auth -> TT_CP_R1_A2;
+  TT_CP_R1_B [label=<<B>TT-CP-R1-B</B><BR/><FONT POINT-SIZE="9">Načtení dat řidiče (zenID + AISPOV; s…</FONT><BR/><FONT POINT-SIZE="8" COLOR="#404040">→ IN_PROGRESS_DRIVERS</FONT><BR/><FONT POINT-SIZE="8" COLOR="#7F7F7F">Pri A</FONT>>, fillcolor="#F4B084",
+           color="#1F4E79"];
+  hub_r1_driver -> TT_CP_R1_B;
+  TT_CP_R1_C [label=<<B>TT-CP-R1-C</B><BR/><FONT POINT-SIZE="9">SPZ + údaje o vozidle (zenID + AISPOV…</FONT><BR/><FONT POINT-SIZE="8" COLOR="#404040">→ IN_PROGRESS_CIRCUMSTANCES</FONT><BR/><FONT POINT-SIZE="8" COLOR="#7F7F7F">Pri A</FONT>>, fillcolor="#F4B084",
+           color="#1F4E79"];
+  hub_r1_vehicle -> TT_CP_R1_C;
+  TT_CP_R1_D [label=<<B>TT-CP-R1-D</B><BR/><FONT POINT-SIZE="9">Okolnosti, datum, místo, viník, souhr…</FONT><BR/><FONT POINT-SIZE="8" COLOR="#404040">→ FINISHED</FONT><BR/><FONT POINT-SIZE="8" COLOR="#7F7F7F">Pri A</FONT>>, fillcolor="#F4B084",
+           color="#1F4E79"];
+  hub_r1_sign -> TT_CP_R1_D;
+  TT_CP_R1_E [label=<<B>TT-CP-R1-E</B><BR/><FONT POINT-SIZE="9">End-to-end orchestrace (cross-area)</FONT><BR/><FONT POINT-SIZE="8" COLOR="#404040">→ FINISHED</FONT><BR/><FONT POINT-SIZE="8" COLOR="#7F7F7F">Pri A</FONT>>, fillcolor="#F4B084",
+           color="#1F4E79"];
+  hub_r1_e2e -> TT_CP_R1_E;
+  TT_CP_R1_F [label=<<B>TT-CP-R1-F</B><BR/><FONT POINT-SIZE="9">Obálka chyb a ukončení (cross-area)</FONT><BR/><FONT POINT-SIZE="8" COLOR="#404040">→ ERROR (with sub-reasons)</FONT><BR/><FONT POINT-SIZE="8" COLOR="#7F7F7F">Pri A</FONT>>, fillcolor="#F4B084",
+           color="#1F4E79"];
+  hub_r1_failures -> TT_CP_R1_F;
+
+  TT_CP_R2_COOKIE [label=<<B>TT-CP-R2-COOKIE</B><BR/><FONT POINT-SIZE="9">Cookies banner first-visit</FONT><BR/><FONT POINT-SIZE="8" COLOR="#7F7F7F">Pri C</FONT>>, fillcolor="#C6E0B4",
+           color="#7F7F7F", style="filled,rounded,dashed"];
+  hub_r2 -> TT_CP_R2_COOKIE;
+  TT_CP_R2_OUTAGE_WARN [label=<<B>TT-CP-R2-OUTAGE-WARN</B><BR/><FONT POINT-SIZE="9">Plánovaná odstávka (žlutý box)</FONT><BR/><FONT POINT-SIZE="8" COLOR="#7F7F7F">Pri C</FONT>>, fillcolor="#C6E0B4",
+           color="#7F7F7F", style="filled,rounded,dashed"];
+  hub_r2 -> TT_CP_R2_OUTAGE_WARN;
+  TT_CP_R2_SHARED [label=<<B>TT-CP-R2-SHARED</B><BR/><FONT POINT-SIZE="9">Sdílený záznam (link/QR pro účastníka…</FONT><BR/><FONT POINT-SIZE="8" COLOR="#7F7F7F">Pri C</FONT>>, fillcolor="#C6E0B4",
+           color="#7F7F7F", style="filled,rounded,dashed"];
+  hub_r2 -> TT_CP_R2_SHARED;
+  TT_CP_R2_MENU [label=<<B>TT-CP-R2-MENU</B><BR/><FONT POINT-SIZE="9">In-app menu (sidebar/hamburger)</FONT><BR/><FONT POINT-SIZE="8" COLOR="#7F7F7F">Pri C</FONT>>, fillcolor="#C6E0B4",
+           color="#7F7F7F", style="filled,rounded,dashed"];
+  hub_r2 -> TT_CP_R2_MENU;
+  TT_CP_R2_FAQ [label=<<B>TT-CP-R2-FAQ</B><BR/><FONT POINT-SIZE="9">FAQ — taxonomie a obsah</FONT><BR/><FONT POINT-SIZE="8" COLOR="#7F7F7F">Pri C</FONT>>, fillcolor="#C6E0B4",
+           color="#7F7F7F", style="filled,rounded,dashed"];
+  hub_r2 -> TT_CP_R2_FAQ;
+  TT_CP_R2_LANDING [label=<<B>TT-CP-R2-LANDING</B><BR/><FONT POINT-SIZE="9">Landing — marketing surface</FONT><BR/><FONT POINT-SIZE="8" COLOR="#7F7F7F">Pri C</FONT>>, fillcolor="#C6E0B4",
+           color="#7F7F7F", style="filled,rounded,dashed"];
+  hub_r2 -> TT_CP_R2_LANDING;
+  TT_CP_R2_HEADER [label=<<B>TT-CP-R2-HEADER</B><BR/><FONT POINT-SIZE="9">Záhlaví / hamburger cross-page</FONT><BR/><FONT POINT-SIZE="8" COLOR="#7F7F7F">Pri D</FONT>>, fillcolor="#D9D9D9",
+           color="#7F7F7F", style="filled,rounded,dashed"];
+  hub_r2 -> TT_CP_R2_HEADER;
+  TT_CP_R2_GDPR [label=<<B>TT-CP-R2-GDPR</B><BR/><FONT POINT-SIZE="9">GDPR / personal-data stránka</FONT><BR/><FONT POINT-SIZE="8" COLOR="#7F7F7F">Pri D</FONT>>, fillcolor="#D9D9D9",
+           color="#7F7F7F", style="filled,rounded,dashed"];
+  hub_r2 -> TT_CP_R2_GDPR;
+  TT_CP_R2_WITNESS [label=<<B>TT-CP-R2-WITNESS</B><BR/><FONT POINT-SIZE="9">Svědci nehody (screen 07)</FONT><BR/><FONT POINT-SIZE="8" COLOR="#7F7F7F">Pri C</FONT>>, fillcolor="#C6E0B4",
+           color="#7F7F7F", style="filled,rounded,dashed"];
+  hub_r2 -> TT_CP_R2_WITNESS;
+  TT_CP_R2_DEMO_RELAX [label=<<B>TT-CP-R2-DEMO-RELAX</B><BR/><FONT POINT-SIZE="9">DEMO env redukovaná validace</FONT><BR/><FONT POINT-SIZE="8" COLOR="#7F7F7F">Pri B</FONT>>, fillcolor="#FFD966",
+           color="#7F7F7F", style="filled,rounded,dashed"];
+  hub_r2 -> TT_CP_R2_DEMO_RELAX;
+  TT_CP_R2_VEHICLE_N [label=<<B>TT-CP-R2-VEHICLE-N</B><BR/><FONT POINT-SIZE="9">Vozidlo N (screens 10–11)</FONT><BR/><FONT POINT-SIZE="8" COLOR="#7F7F7F">Pri A</FONT>>, fillcolor="#F4B084",
+           color="#7F7F7F", style="filled,rounded,dashed"];
+  hub_r2 -> TT_CP_R2_VEHICLE_N;
+}
