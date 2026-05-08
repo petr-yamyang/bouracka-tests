@@ -22,11 +22,20 @@ All 9 Selenium test files — exactly 2 import lines changed per file:
 ### pytest.ini added
 `selenium/pytest.ini` — explicit `pythonpath = .` guard + `testpaths = tests`.
 
-### Verification (Linux sandbox)
+### Verification — Linux sandbox (pre-commit)
 ```
 python3 -m pytest selenium/ --collect-only -q
 # 10 tests collected in 0.12s   ← zero import errors
 ```
+
+### Verification — Windows ThinkPad (post-commit dce8911, Python 3.10.11)
+```
+python -m pytest selenium/ -v
+# 5 passed, 5 skipped, 1 warning in 65.47s
+```
+Note: first Windows run (before commit) still showed 9 errors — NTFS file-cache lag from Linux sed write.
+After `git add` triggered CRLF conversion re-flush, second run resolved cleanly. pytest.ini rootdir lock-in
+(`rootdir: …\selenium`, `configfile: pytest.ini`) confirmed in output.
 
 ### CHANGELOG
 `v0.5.2` section added above `v0.5.1`.
@@ -64,20 +73,19 @@ git push
 
 ## Next actions for full Cíl-1 run on ThinkPad
 
-### Selenium (after Chrome/ChromeDriver confirmed available)
+### ✅ Selenium — DONE (2026-05-08, dce8911)
+```
+5 passed, 5 skipped, 1 warning in 65.47s
+PASS:  smoke, ALT-6, ALT-7, ALT-8, ALT-9 (soft)
+SKIP:  ALT-10, ALT-1, ALT-4, ALT-5, A1-MAIN (drift guard — reCAPTCHA 403 active)
+```
+
+### Selenium — re-run with JSON report (capture for consolidation)
 ```powershell
 cd C:\Users\vitez\Documents\VibeCodeProjects\SUPIN\bouracka-tests
 python -m pytest selenium/ -v `
   --json-report --json-report-file=selenium-report/results.json
 ```
-Expected outcome at Cíl 1 (reCAPTCHA drift active):
-- ALT-9: PASS (soft — 403 drift path)
-- ALT-10: PASS or SKIP (drift guard)
-- ALT-5, ALT-1, ALT-4: SKIP (nav_to_verification_or_skip detects /error/timeout)
-- ALT-6: PASS (static page, no /verification nav)
-- ALT-7: PASS (pure HTTP — public API endpoints)
-- ALT-8: PASS (banner DOM only)
-- A1-MAIN-DEMO: SKIP (drift guard)
 
 ### Cypress (Chrome must be installed)
 ```powershell

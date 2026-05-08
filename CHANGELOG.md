@@ -26,6 +26,28 @@ TestPlan version bumps are decoupled** (see `_specs/EMAIL-DELIVERABILITY-RULES-v
 - `testpaths = tests`, `log_level = WARNING`, `norecursedirs` for node_modules etc.
 - **Verified**: `python -m pytest selenium/ --collect-only` → 10 tests collected, 0 import errors
 
+### Verified — Selenium Cíl 1 baseline (2026-05-08, ThinkPad, Windows 10, Python 3.10.11)
+
+```
+5 passed, 5 skipped, 1 warning in 65.47s
+```
+
+| TC | Status | Notes |
+|----|--------|-------|
+| test_TC_CP_001_bring_up_smoke | PASS | GET / → HTTP 200 |
+| TC-CP-A2-ALT-6 | PASS | Police accordion — 3 bullets + tel:158 |
+| TC-CP-A2-ALT-7 | PASS | Enumerations API — ≥10 companies, ≥200 brands, 8×403 |
+| TC-CP-A2-ALT-8 | PASS | DEMO banner Δ11 + Δ22 strings visible |
+| TC-CP-A2-ALT-9 | PASS (soft) | POST /api/reports → 403 drift; UserWarning issued |
+| TC-CP-A2-ALT-10 | SKIP | Drift guard: SPA routed to /error/timeout |
+| TC-CP-A2-ALT-1 | SKIP | Drift guard: SPA routed to /error/timeout |
+| TC-CP-A2-ALT-4 | SKIP | Drift guard: SPA routed to /error/timeout |
+| TC-CP-A2-ALT-5 | SKIP | Drift guard: SPA routed to /error/timeout |
+| TC-CP-A1-MAIN-DEMO | SKIP | Drift guard: SPA routed to /error/timeout |
+
+ALT-9 drift payload confirmed: `correlationId: 54a6e0a3-..., status: 403, error: "Forbidden", path: "/reports"`.
+All drift-guarded tests will become executable at Cíl 2 (`tst.demo.bouracka.cz`).
+
 ---
 
 ## [v0.5.1] — 2026-05-08 — CP-SUPIN-05 cross-framework parity ports
