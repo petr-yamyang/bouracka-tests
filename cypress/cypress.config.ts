@@ -60,7 +60,22 @@ export default defineConfig({
     viewportWidth: 375,    // AMENDMENT 2 mobile-first default
     viewportHeight: 667,
     defaultCommandTimeout: 10_000,
-    pageLoadTimeout: 180_000,   // SPA cold-load with reCAPTCHA v3 blocks load event >60s
+    pageLoadTimeout: 60_000,
+    // Block external scripts that permanently hang the browser load event under
+    // Cypress DevTools instrumentation (reCAPTCHA v3 + GTM background connections).
+    // Blocked requests fail fast → load event fires → cy.visit() unblocks.
+    // POST /api/reports still returns 403 (missing captcha token) → SPA routes
+    // to /error/timeout → drift guard detects → this.skip() — expected Cíl 1 outcome.
+    blockHosts: [
+      "www.gstatic.com",           // reCAPTCHA v3 script bundle
+      "recaptcha.net",             // reCAPTCHA alternate domain
+      "www.google.com",            // reCAPTCHA api.js
+      "www.googletagmanager.com",  // GTM — background network keep-alive
+      "ssl.google-analytics.com",  // GA — background analytics
+      "www.google-analytics.com",  // GA alternate
+      "fonts.googleapis.com",      // Google Fonts CSS (async, often delays load)
+      "fonts.gstatic.com",         // Google Fonts files
+    ],
     video: true,
     screenshotOnRunFailure: true,
     setupNodeEvents(on, _config) {

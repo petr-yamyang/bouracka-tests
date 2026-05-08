@@ -139,7 +139,8 @@ describe("TC-CP-A1-MAIN-DEMO — full happy-day E2E [Cypress]", () => {
       cy.contains("button", /vyplnit záznam/i).first().scrollIntoView().click();
 
       // ── Phase A: intro ────────────────────────────────────────────────────
-      cy.url().should("match", /\/formular\/informations\/?$/);
+      // URL contains the report UUID: /formular/{uuid}/informations
+      cy.url({ timeout: 15_000 }).should("match", /\/formular\/[0-9a-f-]{36}\/informations/);
       cy.contains(/Co vás čeká/i).should("be.visible");
       cy.contains("button", /Rozumím/i).click();
 

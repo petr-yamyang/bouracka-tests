@@ -59,8 +59,10 @@ export function navToVerificationOrSkip(
   cy.visit(`${base}/formular/`);
   dismissCookieBanner();
 
+  // scrollIntoView: at 375px mobile viewport a MUI Typography <p> overlaps the button
   cy.contains("button", /vyplnit záznam/i, { timeout: 15_000 })
     .first()
+    .scrollIntoView()
     .click();
 
   cy.contains("button", /Rozumím/i, { timeout: 15_000 }).click();
