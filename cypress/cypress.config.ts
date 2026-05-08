@@ -60,7 +60,7 @@ export default defineConfig({
     viewportWidth: 375,    // AMENDMENT 2 mobile-first default
     viewportHeight: 667,
     defaultCommandTimeout: 10_000,
-    pageLoadTimeout: 60_000,
+    pageLoadTimeout: 180_000,   // SPA cold-load with reCAPTCHA v3 blocks load event >60s
     video: true,
     screenshotOnRunFailure: true,
     setupNodeEvents(on, _config) {
