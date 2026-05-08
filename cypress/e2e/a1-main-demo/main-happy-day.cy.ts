@@ -136,7 +136,7 @@ describe("TC-CP-A1-MAIN-DEMO — full happy-day E2E [Cypress]", () => {
       cy.visit(`${BASE}/formular/`);
       dismissCookieBanner();
       cy.contains(/Stala se vám dopravní nehoda/i).should("be.visible");
-      cy.contains("button", /vyplnit záznam/i).first().click();
+      cy.contains("button", /vyplnit záznam/i).first().scrollIntoView().click();
 
       // ── Phase A: intro ────────────────────────────────────────────────────
       cy.url().should("match", /\/formular\/informations\/?$/);

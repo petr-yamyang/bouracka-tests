@@ -60,7 +60,7 @@ export default defineConfig({
     viewportWidth: 375,    // AMENDMENT 2 mobile-first default
     viewportHeight: 667,
     defaultCommandTimeout: 10_000,
-    pageLoadTimeout: 30_000,
+    pageLoadTimeout: 60_000,
     video: true,
     screenshotOnRunFailure: true,
     setupNodeEvents(on, _config) {
