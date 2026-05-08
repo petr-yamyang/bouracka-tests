@@ -12,7 +12,8 @@
  * /error/timeout (POST /api/reports 403 reCAPTCHA drift — 2026-05-07).
  * Tags: @demo, @ui
  */
-import { covers, navToVerificationOrSkip } from "../../support/nav-helpers";
+import { covers } from "../../support/data-loader";
+import { navToVerificationOrSkip } from "../../support/nav-helpers";
 
 const BASE =
   Cypress.env("BOURACKA_BASE") ??

@@ -27,7 +27,8 @@
  * Note: Playwright source had typo `abel(/Model vozidla/i)` — corrected to
  * `cy.get([aria-label...])` equivalent in this port.
  */
-import { covers, dismissCookieBanner, navToVerificationOrSkip, setOtpDigits } from "../../support/nav-helpers";
+import { covers } from "../../support/data-loader";
+import { dismissCookieBanner, navToVerificationOrSkip, setOtpDigits } from "../../support/nav-helpers";
 
 const BASE =
   Cypress.env("BOURACKA_BASE") ??

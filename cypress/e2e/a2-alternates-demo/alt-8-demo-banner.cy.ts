@@ -10,7 +10,8 @@
  * DEMO-only: skip if BASE is not demo.bouracka.cz.
  * Tags: @demo, @ui
  */
-import { covers, dismissCookieBanner } from "../../support/nav-helpers";
+import { covers } from "../../support/data-loader";
+import { dismissCookieBanner } from "../../support/nav-helpers";
 
 const BASE =
   Cypress.env("BOURACKA_BASE") ??

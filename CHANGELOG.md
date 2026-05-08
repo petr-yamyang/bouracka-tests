@@ -7,6 +7,23 @@ TestPlan version bumps are decoupled** (see `_specs/EMAIL-DELIVERABILITY-RULES-v
 
 ---
 
+## [v0.5.3] — 2026-05-08 — Cypress `covers` import fix (8 spec files)
+
+### Fixed — `covers` imported from wrong module in 8 Cypress spec files
+
+- Root cause: all CP-SUPIN-05 spec files imported `covers` from `../../support/nav-helpers`
+  but `covers()` is only defined and exported from `../../support/data-loader`.
+  `nav-helpers.ts` exports `dismissCookieBanner`, `navToVerificationOrSkip`, `setOtpDigits` only.
+  At runtime Webpack resolved `nav_helpers_1.covers` to `undefined` → `TypeError: (0, nav_helpers_1.covers) is not a function`.
+- Fix: added `import { covers } from "../../support/data-loader"` to each affected file
+  and removed `covers` from the nav-helpers import line.
+- Affected (8 files): `alt-1-rp-regex.cy.ts`, `alt-4-gdpr-consent.cy.ts`, `alt-5-slovak-prefix.cy.ts`,
+  `alt-6-police-card.cy.ts`, `alt-8-demo-banner.cy.ts`, `alt-9-post-reports-drift.cy.ts`,
+  `alt-10-spa-post-probe.cy.ts`, `main-happy-day.cy.ts`
+- `alt-7-enumerations.cy.ts` was already correct (control case confirming the fix).
+
+---
+
 ## [v0.5.2] — 2026-05-08 — Selenium import namespace fix + pytest.ini
 
 ### Fixed — `selenium.helpers` namespace collision (9 files)

@@ -14,7 +14,8 @@
  * /error/timeout. Expected outcome on Cíl 1: SKIPPED.
  * Tags: @demo, @ui, @validation
  */
-import { covers, dismissCookieBanner, navToVerificationOrSkip, setOtpDigits } from "../../support/nav-helpers";
+import { covers } from "../../support/data-loader";
+import { dismissCookieBanner, navToVerificationOrSkip, setOtpDigits } from "../../support/nav-helpers";
 
 const BASE =
   Cypress.env("BOURACKA_BASE") ??

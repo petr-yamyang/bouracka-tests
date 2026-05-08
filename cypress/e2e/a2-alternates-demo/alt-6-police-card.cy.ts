@@ -12,7 +12,8 @@
  * Pure UI test — no navToVerification; stays on /formular/ rozcestnik.
  * Tags: @demo, @ui
  */
-import { covers, dismissCookieBanner } from "../../support/nav-helpers";
+import { covers } from "../../support/data-loader";
+import { dismissCookieBanner } from "../../support/nav-helpers";
 
 const BASE =
   Cypress.env("BOURACKA_BASE") ??

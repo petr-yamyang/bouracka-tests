@@ -13,7 +13,7 @@
  * Writes alt9-response artefact via cy.writeFile to runs/.
  * Tags: @demo, @api, @drift-aware
  */
-import { covers } from "../../support/nav-helpers";
+import { covers } from "../../support/data-loader";
 
 const BASE =
   Cypress.env("BOURACKA_BASE") ??

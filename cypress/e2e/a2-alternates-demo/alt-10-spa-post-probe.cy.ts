@@ -15,7 +15,8 @@
  * Acceptance: produces alt10 probe artefact; GREEN regardless of 200/403 response.
  * Tags: @demo, @ui, @drift-aware
  */
-import { covers, dismissCookieBanner } from "../../support/nav-helpers";
+import { covers } from "../../support/data-loader";
+import { dismissCookieBanner } from "../../support/nav-helpers";
 
 const BASE =
   Cypress.env("BOURACKA_BASE") ??
