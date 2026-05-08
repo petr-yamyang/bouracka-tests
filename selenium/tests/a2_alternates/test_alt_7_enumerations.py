@@ -22,7 +22,7 @@ import os
 import pytest
 import requests as http
 
-from selenium.helpers.data_loader import covers
+from helpers.data_loader import covers
 
 BASE = os.environ.get("BOURACKA_BASE", "https://demo.bouracka.cz")
 

@@ -37,8 +37,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
-from selenium.helpers.data_loader import covers
-from selenium.helpers.nav_helpers import (
+from helpers.data_loader import covers
+from helpers.nav_helpers import (
     dismiss_cookie_banner,
     nav_to_verification_or_skip,
     set_otp_digits,

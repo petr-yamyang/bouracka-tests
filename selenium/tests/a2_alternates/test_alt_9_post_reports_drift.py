@@ -25,7 +25,7 @@ from pathlib import Path
 
 import requests as http
 
-from selenium.helpers.data_loader import covers
+from helpers.data_loader import covers
 
 BASE = os.environ.get("BOURACKA_BASE", "https://demo.bouracka.cz")
 RUNS_DIR = Path(__file__).resolve().parents[3] / "runs"

@@ -7,6 +7,27 @@ TestPlan version bumps are decoupled** (see `_specs/EMAIL-DELIVERABILITY-RULES-v
 
 ---
 
+## [v0.5.2] — 2026-05-08 — Selenium import namespace fix + pytest.ini
+
+### Fixed — `selenium.helpers` namespace collision (9 files)
+
+- All Selenium test files: `from selenium.helpers.X import Y` → `from helpers.X import Y`
+- Root cause: `selenium/` local directory (no `__init__.py`) is resolved as a Python 3 namespace
+  package when the repo root is in `sys.path`. `from selenium.helpers.X` then tries to import
+  `helpers` as a sub-module of that namespace package, which doesn't exist. Fix: import helpers
+  directly since `selenium/` is on `sys.path` as pytest's rootdir.
+- Affected: `test_alt_1_rp_regex.py`, `test_alt_4_gdpr_consent.py`, `test_alt_5_slovak_prefix.py`,
+  `test_alt_6_police_card.py`, `test_alt_7_enumerations.py`, `test_alt_8_demo_banner.py`,
+  `test_alt_9_post_reports_drift.py`, `test_alt_10_spa_post_probe.py`, `test_main_happy_day.py`
+
+### Added — `selenium/pytest.ini`
+
+- Explicit `pythonpath = .` (relative to `selenium/`) documents the namespace-collision guard
+- `testpaths = tests`, `log_level = WARNING`, `norecursedirs` for node_modules etc.
+- **Verified**: `python -m pytest selenium/ --collect-only` → 10 tests collected, 0 import errors
+
+---
+
 ## [v0.5.1] — 2026-05-08 — CP-SUPIN-05 cross-framework parity ports
 
 ### Added — Cypress test suite (9 files)

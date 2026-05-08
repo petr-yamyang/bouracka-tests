@@ -26,8 +26,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-from selenium.helpers.data_loader import covers
-from selenium.helpers.nav_helpers import nav_to_verification_or_skip
+from helpers.data_loader import covers
+from helpers.nav_helpers import nav_to_verification_or_skip
 
 
 # JS snippet: inject fetch + XHR interceptor to count PUT /reporter requests.

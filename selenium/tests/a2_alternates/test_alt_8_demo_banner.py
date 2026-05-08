@@ -19,8 +19,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-from selenium.helpers.data_loader import covers
-from selenium.helpers.nav_helpers import dismiss_cookie_banner
+from helpers.data_loader import covers
+from helpers.nav_helpers import dismiss_cookie_banner
 
 
 def test_TC_CP_A2_ALT_8_demo_banner(driver, base_url):
