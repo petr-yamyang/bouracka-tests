@@ -7,6 +7,125 @@ TestPlan version bumps are decoupled** (see `_specs/EMAIL-DELIVERABILITY-RULES-v
 
 ---
 
+## [v0.5.3] — 2026-05-08 — Cypress `covers` import fix (8 spec files)
+
+### Fixed — `covers` imported from wrong module in 8 Cypress spec files
+
+- Root cause: all CP-SUPIN-05 spec files imported `covers` from `../../support/nav-helpers`
+  but `covers()` is only defined and exported from `../../support/data-loader`.
+  `nav-helpers.ts` exports `dismissCookieBanner`, `navToVerificationOrSkip`, `setOtpDigits` only.
+  At runtime Webpack resolved `nav_helpers_1.covers` to `undefined` → `TypeError: (0, nav_helpers_1.covers) is not a function`.
+- Fix: added `import { covers } from "../../support/data-loader"` to each affected file
+  and removed `covers` from the nav-helpers import line.
+- Affected (8 files): `alt-1-rp-regex.cy.ts`, `alt-4-gdpr-consent.cy.ts`, `alt-5-slovak-prefix.cy.ts`,
+  `alt-6-police-card.cy.ts`, `alt-8-demo-banner.cy.ts`, `alt-9-post-reports-drift.cy.ts`,
+  `alt-10-spa-post-probe.cy.ts`, `main-happy-day.cy.ts`
+- `alt-7-enumerations.cy.ts` was already correct (control case confirming the fix).
+
+---
+
+## [v0.5.2] — 2026-05-08 — Selenium import namespace fix + pytest.ini
+
+### Fixed — `selenium.helpers` namespace collision (9 files)
+
+- All Selenium test files: `from selenium.helpers.X import Y` → `from helpers.X import Y`
+- Root cause: `selenium/` local directory (no `__init__.py`) is resolved as a Python 3 namespace
+  package when the repo root is in `sys.path`. `from selenium.helpers.X` then tries to import
+  `helpers` as a sub-module of that namespace package, which doesn't exist. Fix: import helpers
+  directly since `selenium/` is on `sys.path` as pytest's rootdir.
+- Affected: `test_alt_1_rp_regex.py`, `test_alt_4_gdpr_consent.py`, `test_alt_5_slovak_prefix.py`,
+  `test_alt_6_police_card.py`, `test_alt_7_enumerations.py`, `test_alt_8_demo_banner.py`,
+  `test_alt_9_post_reports_drift.py`, `test_alt_10_spa_post_probe.py`, `test_main_happy_day.py`
+
+### Added — `selenium/pytest.ini`
+
+- Explicit `pythonpath = .` (relative to `selenium/`) documents the namespace-collision guard
+- `testpaths = tests`, `log_level = WARNING`, `norecursedirs` for node_modules etc.
+- **Verified**: `python -m pytest selenium/ --collect-only` → 10 tests collected, 0 import errors
+
+### Verified — Selenium Cíl 1 baseline (2026-05-08, ThinkPad, Windows 10, Python 3.10.11)
+
+```
+5 passed, 5 skipped, 1 warning in 65.47s
+```
+
+| TC | Status | Notes |
+|----|--------|-------|
+| test_TC_CP_001_bring_up_smoke | PASS | GET / → HTTP 200 |
+| TC-CP-A2-ALT-6 | PASS | Police accordion — 3 bullets + tel:158 |
+| TC-CP-A2-ALT-7 | PASS | Enumerations API — ≥10 companies, ≥200 brands, 8×403 |
+| TC-CP-A2-ALT-8 | PASS | DEMO banner Δ11 + Δ22 strings visible |
+| TC-CP-A2-ALT-9 | PASS (soft) | POST /api/reports → 403 drift; UserWarning issued |
+| TC-CP-A2-ALT-10 | SKIP | Drift guard: SPA routed to /error/timeout |
+| TC-CP-A2-ALT-1 | SKIP | Drift guard: SPA routed to /error/timeout |
+| TC-CP-A2-ALT-4 | SKIP | Drift guard: SPA routed to /error/timeout |
+| TC-CP-A2-ALT-5 | SKIP | Drift guard: SPA routed to /error/timeout |
+| TC-CP-A1-MAIN-DEMO | SKIP | Drift guard: SPA routed to /error/timeout |
+
+ALT-9 drift payload confirmed: `correlationId: 54a6e0a3-..., status: 403, error: "Forbidden", path: "/reports"`.
+All drift-guarded tests will become executable at Cíl 2 (`tst.demo.bouracka.cz`).
+
+---
+
+## [v0.5.1] — 2026-05-08 — CP-SUPIN-05 cross-framework parity ports
+
+### Added — Cypress test suite (9 files)
+
+- `cypress/e2e/a1-main-demo/main-happy-day.cy.ts` — TC-CP-A1-MAIN-DEMO full E2E (drift-skip on Cíl 1)
+- `cypress/e2e/a2-alternates-demo/alt-1-rp-regex.cy.ts` — TC-CP-A2-ALT-1 ŘP regex rejection (drift-skip)
+- `cypress/e2e/a2-alternates-demo/alt-4-gdpr-consent.cy.ts` — TC-CP-A2-ALT-4 GDPR consent gate (drift-skip)
+- `cypress/e2e/a2-alternates-demo/alt-5-slovak-prefix.cy.ts` — TC-CP-A2-ALT-5 +421 Předvolba (drift-skip)
+- `cypress/e2e/a2-alternates-demo/alt-6-police-card.cy.ts` — TC-CP-A2-ALT-6 police accordion (/formular/ static)
+- `cypress/e2e/a2-alternates-demo/alt-7-enumerations.cy.ts` — TC-CP-A2-ALT-7 public API ≥10/≥200 + 8×403
+- `cypress/e2e/a2-alternates-demo/alt-8-demo-banner.cy.ts` — TC-CP-A2-ALT-8 DEMO banner (Δ11+Δ22)
+- `cypress/e2e/a2-alternates-demo/alt-9-post-reports-drift.cy.ts` — TC-CP-A2-ALT-9 POST /api/reports (soft 200|403)
+- `cypress/e2e/a2-alternates-demo/alt-10-spa-post-probe.cy.ts` — TC-CP-A2-ALT-10 SPA network capture (drift probe)
+
+### Added — Selenium pytest suite (10 files)
+
+- `selenium/tests/a1_main/__init__.py` + `test_main_happy_day.py` — TC-CP-A1-MAIN-DEMO (drift-skip)
+- `selenium/tests/a2_alternates/test_alt_1_rp_regex.py` — TC-CP-A2-ALT-1 (drift-skip)
+- `selenium/tests/a2_alternates/test_alt_4_gdpr_consent.py` — TC-CP-A2-ALT-4; JS XHR+fetch spy for PUT /reporter
+- `selenium/tests/a2_alternates/test_alt_5_slovak_prefix.py` — TC-CP-A2-ALT-5 (drift-skip)
+- `selenium/tests/a2_alternates/test_alt_6_police_card.py` — TC-CP-A2-ALT-6
+- `selenium/tests/a2_alternates/test_alt_7_enumerations.py` — TC-CP-A2-ALT-7 (pure requests.Session)
+- `selenium/tests/a2_alternates/test_alt_8_demo_banner.py` — TC-CP-A2-ALT-8
+- `selenium/tests/a2_alternates/test_alt_9_post_reports_drift.py` — TC-CP-A2-ALT-9 (soft pass)
+- `selenium/tests/a2_alternates/test_alt_10_spa_post_probe.py` — TC-CP-A2-ALT-10; CDP + JS fetch dual capture
+
+### Added — shared infrastructure (6 files)
+
+- `cypress/cypress.config.ts` — rewritten: `loadFixture` + `recordDrift` tasks wired into setupNodeEvents
+- `cypress/support/data-loader.ts` — `loadFixture<T>()` + `covers()` + TypeScript interfaces
+- `cypress/support/nav-helpers.ts` — `dismissCookieBanner`, `navToVerificationOrSkip` (drift guard), `setOtpDigits`
+- `selenium/conftest.py` — `driver()` (mobile-emulated Chrome 375×667) + `base_url()` fixtures
+- `selenium/helpers/data_loader.py` — `load_fixture()` + `covers()` annotation helper
+- `selenium/helpers/nav_helpers.py` — `dismiss_cookie_banner`, `nav_to_verification_or_skip`, `set_otp_digits`, `set_react_input`
+
+### Added — tooling (1 file)
+
+- `tools/consolidate_results.py` — merges Playwright + Cypress + Selenium JSON results into
+  cross-framework parity report (`runs/cross-framework-{date}.json` + `.md`). Detects TC-level
+  divergences. Dry-run verified (empty-results path exits 0).
+
+### Added — docs (1 file)
+
+- `_specs/SYNCHRO-OPUS-FROM-SONNET-CP-SUPIN-05-2026-05-08.md` — Sonnet→Opus handback:
+  TC×framework matrix, easy/hard findings, design differences, 8 recommendations, commit checklist
+
+### Fixed — Playwright source typo (documented, not changed)
+
+- `playwright/tests/a1-main-happy-day-demo.spec.ts` line ~221: `abel(/Model vozidla/i)` is a typo
+  for `await page.getLabel(...)` — corrected in both Cypress and Selenium ports. Original Playwright
+  source NOT modified (preserve source-of-truth integrity; raise as Q-PARITY-3 for Pete).
+
+### Fixed — Playwright source truncation (documented)
+
+- `playwright/tests/a2-alternates-demo.spec.ts` truncated at line 228 (ALT-10 body incomplete).
+  ALT-10 ports reconstructed from spec §3.2. Raise as Q-PARITY-3 for Pete to verify git integrity.
+
+---
+
 ## [v0.5.0] — 2026-05-07 EOD — CP-SUPIN-05 seed
 
 ### Added — strategic governance (6 docs)
