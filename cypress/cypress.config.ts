@@ -79,6 +79,24 @@ export default defineConfig({
     video: true,
     screenshotOnRunFailure: true,
     setupNodeEvents(on, _config) {
+      // ── CP-SUPIN-05: Chrome flags — disable background networking ──────────
+      // --disable-background-networking prevents Chrome from keeping persistent
+      // connections alive (reCAPTCHA v3 WebSocket heartbeat, GTM keep-alive).
+      // blockHosts intercepts HTTP fetch/XHR but the WS upgrade fires AFTER the
+      // script executes; Chrome launch flag prevents the upgrade attempt entirely.
+      on("before:browser:launch", (browser, launchOptions) => {
+        if (browser.name === "chrome" || browser.name === "chromium") {
+          launchOptions.args.push(
+            "--disable-background-networking",   // stops persistent bg connections
+            "--disable-sync",                    // no Google account sync requests
+            "--disable-default-apps",            // no built-in app heartbeats
+            "--no-default-browser-check",        // eliminates one async network check
+            "--metrics-recording-only",          // disables UMA upload connections
+          );
+        }
+        return launchOptions;
+      });
+
       // ── CP-SUPIN-05: fixture loader task ───────────────────────────────────
       // Usage in tests: cy.task('loadFixture', 'test-participants') → resolves to object
       const fixtureRoot = path.resolve(__dirname, "../fixtures/test-data");
