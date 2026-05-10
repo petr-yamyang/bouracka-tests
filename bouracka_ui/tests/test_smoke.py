@@ -117,7 +117,9 @@ def test_post_run_returns_run_id():
     j = r.json()
     assert "run_id" in j
     import re
-    assert re.match(r"^run-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z-[0-9a-f]{7}$", j["run_id"])
+    # BUG-BUI-001: ':' in time portion → use '-' (Windows NTFS filename safety;
+    # see dispatcher.py RUN_ID_RE + generate_run_id()).
+    assert re.match(r"^run-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z-[0-9a-f]{7}$", j["run_id"])
 
 
 def test_post_run_rejects_missing_env():

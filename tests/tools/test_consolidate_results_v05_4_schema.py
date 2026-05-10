@@ -157,7 +157,9 @@ def test_schema_version_pinned(run_consolidate):
 
 
 def test_run_id_format(run_consolidate):
-    assert re.match(r"^run-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z-[0-9a-f]{7}$",
+    # BUG-BUI-001: ':' → '-' in time portion (Windows NTFS filename safety;
+    # see bouracka_ui/dispatcher.py RUN_ID_RE + generate_run_id()).
+    assert re.match(r"^run-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z-[0-9a-f]{7}$",
                     run_consolidate["run_id"])
 
 

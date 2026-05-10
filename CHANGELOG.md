@@ -119,8 +119,11 @@ TestPlan version bumps are decoupled** (see `_specs/EMAIL-DELIVERABILITY-RULES-v
 - `--env-url <url>` — canonical env URL; replaces `--base-url` (kept as alias
   for back-compat).
 - `--run-id <string>` — explicit run id (regex
-  `^run-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z-[0-9a-f]{7}$`); auto-generated
-  from UTC-now + git short hash if omitted.
+  `^run-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z-[0-9a-f]{7}$`); auto-generated
+  from UTC-now + git short hash if omitted. NOTE (BUG-BUI-001, 2026-05-10):
+  time portion uses `-` (not `:`) for Windows NTFS filename safety; the
+  run_id is also used as a filename component in `runs/` and inside trace
+  bundles.
 - `--reporter-command <string>` — captures the run trigger command in
   `reporter.command`.
 - `--trigger {manual|ci|scheduled|api}`.

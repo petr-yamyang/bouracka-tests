@@ -47,9 +47,11 @@ Rendered as a fully-instantiated v0.1 instance with field-level commentary in JS
 {
   // §2.1 — top-level run identity
   "schema_version": "1.0",                          // pinned literal "1.0" for this spec; see §6
-  "run_id":         "run-2026-05-10T14:30:00Z-a1b2c3d",
-                                                     // format: "run-<ISO-8601 UTC w/ Z>-<7-char short hash>"
+  "run_id":         "run-2026-05-10T14-30-00Z-a1b2c3d",
+                                                     // format: "run-<ISO-8601 UTC w/ Z, ':' replaced by '-'>-<7-char short hash>"
                                                      // hash = first 7 chars of git HEAD or random uuid4 hex
+                                                     // BUG-BUI-001 (2026-05-10): time portion uses '-' (not ':')
+                                                     // so the run_id is safe as a Windows NTFS filename component.
   "env":            "demo",                          // enum: demo | tst | uat | prod-readonly | prod-writable
                                                      // per BOURACKA-PROD-ENV-CLONE-DESIGN §3
   "env_url":        "https://demo.bouracka.cz",      // (optional) the actual base URL targeted; informational
@@ -175,7 +177,7 @@ Rendered as a fully-instantiated v0.1 instance with field-level commentary in JS
 | Field | Type | Required | Constraint |
 |-------|------|:---:|------------|
 | `schema_version` | string | yes | exactly `"1.0"` for this spec; bumps to `"1.1"` etc per §6 |
-| `run_id` | string | yes | regex `^run-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z-[0-9a-f]{7}$`; UUID-uniqueness across all runs |
+| `run_id` | string | yes | regex `^run-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z-[0-9a-f]{7}$`; UUID-uniqueness across all runs. NOTE (BUG-BUI-001, 2026-05-10): time portion uses `-` separators (not `:`) for Windows NTFS filename safety; the `run_id` is also used as a filename component. |
 | `env` | enum string | yes | one of `demo` `tst` `uat` `prod-readonly` `prod-writable` |
 | `env_url` | string \| null | no | absolute URL or null; informational only |
 | `started_at` / `ended_at` | string | yes | ISO-8601 UTC with trailing `Z`; `started_at` ≤ `ended_at` |
