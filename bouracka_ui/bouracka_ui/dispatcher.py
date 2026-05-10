@@ -23,7 +23,10 @@ import sys
 import uuid
 from pathlib import Path
 
-RUN_ID_RE = re.compile(r"^run-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z-[0-9a-f]{7}$")
+RUN_ID_RE = re.compile(r"^run-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z-[0-9a-f]{7}$")
+# Note: timestamp uses '-' instead of ':' separators so run_ids are valid
+# filename components on Windows (NTFS rejects ':' in filenames). POSIX is
+# fine with either; we pick filename-safe format for cross-platform parity.
 
 # Per the workbook ENV-* codes per §4.1 of the UI design doc.
 ENV_TO_BASE_URL = {
@@ -35,7 +38,9 @@ ENV_TO_BASE_URL = {
 
 
 def generate_run_id() -> str:
-    ts = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    # Use '-' instead of ':' in time portion for Windows filename safety
+    # (NTFS rejects ':' in filename components; POSIX accepts either).
+    ts = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
     short = uuid.uuid4().hex[:7]
     rid = f"run-{ts}-{short}"
     assert RUN_ID_RE.match(rid)

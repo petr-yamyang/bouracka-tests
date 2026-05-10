@@ -70,8 +70,11 @@ TT_CODE_RE = re.compile(r"TT-[A-Z]+-[a-zA-Z0-9_]+")
 _NODEID_TC_RE = re.compile(r"::test_(TC(?:_[A-Z0-9]+)+)")
 # Drift skip marker prefix per schema spec §4.4
 _DRIFT_SKIP_RE = re.compile(r"DRIFT-[A-Z0-9-]+")
-# Run-id format: run-<ISO timestamp>-<7-hex>
-RUN_ID_RE = re.compile(r"^run-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z-[0-9a-f]{7}$")
+# Run-id format: run-<timestamp>-<7-hex>
+# Timestamp uses '-' separators (not ISO-8601 ':') so run_ids are valid
+# filename components on Windows (NTFS rejects ':' in filenames). See
+# bouracka_ui/bouracka_ui/dispatcher.py:generate_run_id() for the producer.
+RUN_ID_RE = re.compile(r"^run-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z-[0-9a-f]{7}$")
 
 SOFT_PASS_MARKERS = {"TC-CP-A2-ALT-9"}
 

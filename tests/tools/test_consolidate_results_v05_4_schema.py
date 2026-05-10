@@ -127,7 +127,7 @@ def run_consolidate(fixture_dir: Path) -> dict:
     rc = cr.main([
         "--env", "demo",
         "--env-url", "https://demo.bouracka.cz",
-        "--run-id", "run-2026-05-10T12:00:00Z-abcdef0",
+        "--run-id", "run-2026-05-10T12-00-00Z-abcdef0",
         "--pw", str(fixture_dir / "playwright-report" / "results.json"),
         "--cy", str(fixture_dir / "cypress" / "cypress-results" / "*.json"),
         "--se", str(fixture_dir / "selenium-report" / "results.json"),

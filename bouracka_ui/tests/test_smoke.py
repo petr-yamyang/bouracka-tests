@@ -137,7 +137,7 @@ def test_get_runs_list_responds():
 
 
 def test_get_runs_unknown_id_404():
-    r = client.get("/api/runs/run-2026-01-01T00:00:00Z-abcdef0")
+    r = client.get("/api/runs/run-2026-01-01T00-00-00Z-abcdef0")
     assert r.status_code == 404
 
 
@@ -195,7 +195,7 @@ def sample_run_envelope(tmp_path, monkeypatch):
     """Drop a synthetic envelope into runs/ and point server.RUNS_DIR to it."""
     import bouracka_ui.server as srv
     monkeypatch.setattr(srv, "RUNS_DIR", tmp_path)
-    rid = "run-2026-05-10T15:00:00Z-abcdef0"
+    rid = "run-2026-05-10T15-00-00Z-abcdef0"
     envelope = {
         "schema_version": "1.0",
         "run_id": rid,
