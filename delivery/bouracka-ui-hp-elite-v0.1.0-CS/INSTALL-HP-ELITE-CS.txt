@@ -1,0 +1,169 @@
+================================================================================
+  BOURACKA UI v0.1.0 — INSTALAČNÍ PRŮVODCE PRO HP ELITE (CS)
+  Cílový stroj: HP EliteBook SUPNB001 (vlastněný SUPIN) nebo libovolný Win 10/11 notebook
+  Cílová skupina: testeři (znalost Pythonu není potřeba)
+  Časová náročnost: ~10 minut
+================================================================================
+
+CO INSTALUJETE
+--------------
+Bouracka UI je malá lokální webová aplikace, která umožňuje spouštět Bouračku
+testovací sadu proti demo.bouracka.cz (nebo tst.bouracka.cz, uat.bouracka.cz,
+www.bouracka.cz) z jediné obrazovky místo zapamatovávání si oddělených CLI
+příkazů pro jednotlivé frameworky (Cypress / Playwright / Selenium). Také
+zobrazuje výsledky a umožňuje zakládat bugy zpět do sdíleného Excel
+workbooku.
+
+Běží KOMPLETNĚ na VAŠEM notebooku. Žádná data neopouštějí stroj (kromě HTTP
+požadavků, které samotné testovací skripty stejně posílají na bouracka.cz).
+
+
+PŘEDPOKLADY
+-----------
+Potřebujete JEDEN z následujících Python interpretů dostupný na PATH:
+  - Python 3.10 (doporučeno — odpovídá wheelu, který jsme sestavili)
+  - Python 3.11 nebo 3.12 (taky v pořádku; pure-Python wheel)
+
+Kontrola — otevřete PowerShell a spusťte:
+
+    python --version
+
+Pokud vidíte „Python 3.10.x" nebo vyšší, jste OK. Pokud dostanete „command
+not found" nebo mnohem starší verzi, nainstalujte nejdřív Python 3.10
+z python.org (zaškrtněte „Add Python to PATH" během instalace).
+
+VOLITELNÉ předpoklady — potřebné jen pokud chcete, aby běhy skutečně
+spouštěly browser automation místo mock-mode dema:
+  - Node.js 18+ (pro Cypress + Playwright)
+  - Cypress 13+ (npm install cypress --save-dev uvnitř bouracka-tests/)
+  - Playwright (npm install @playwright/test --save-dev; npx playwright install)
+
+Pokud npx není na PATH, dispatcher přepne do MOCK MODE — UI funguje
+end-to-end (můžete ho ovládat, vidět falešné výsledky, zakládat bugy),
+prostě jen nebude skutečně kontaktovat bouracka.cz.
+
+
+INSTALACE — POPRVÉ NA ČISTÉM NOTEBOOKU
+--------------------------------------
+
+1. Rozbalte tento balíček do složky, kterou si udržíte. Doporučeno:
+
+       C:\bouracka-ui
+
+2. Otevřete PowerShell, přejděte do té složky a vytvořte virtual environment:
+
+       cd C:\bouracka-ui
+       python -m venv .venv
+       .\.venv\Scripts\Activate.ps1
+
+   Teď byste měli před promptem vidět "(.venv)".
+
+   Pokud PowerShell odmítne spustit Activate.ps1 s „execution of scripts
+   is disabled", spusťte JEDNOU jako aktuální uživatel (admin práva nejsou
+   potřeba):
+
+       Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+
+   ...a pak Activate.ps1 znovu.
+
+3. Nainstalujte wheel bouracka-ui:
+
+       pip install --upgrade pip
+       pip install bouracka_ui-0.1.0-py3-none-any.whl
+
+   Stáhne se FastAPI, uvicorn, openpyxl atd. (~30 MB celkem).
+
+4. Smoke kontrola instalace:
+
+       bouracka-ui --help
+
+   Měli byste vidět banner s nápovědou. Pokud ano — máte nainstalováno.
+
+5. Ověřte, že testovací workbook je přítomný vedle instalace:
+
+       ls BOURACKA-TESTPLAN-*.xlsx
+
+   Měli byste vidět „BOURACKA-TESTPLAN-v0.4.2.xlsx" (nebo verzi
+   dodanou s tímto balíčkem).
+
+
+SPUŠTĚNÍ
+--------
+
+       bouracka-ui
+
+To spustí lokální server na http://127.0.0.1:8424/ a (defaultně) automaticky
+otevře váš výchozí prohlížeč na stránce Run.
+
+Zastavení serveru: Ctrl+C v okně PowerShellu. Záložku v prohlížeči zavřete,
+až s tím skončíte.
+
+
+PRVNÍ BĚH — SMOKE TEST (TC-CP-A1-MAIN-DEMO)
+-------------------------------------------
+
+1. Když bouracka-ui běží, otevřete v prohlížeči http://127.0.0.1:8424/.
+2. Na stránce „Run tests":
+   - Environment: nechte na „ENV-DMO — Demo (demo.bouracka.cz)"
+   - Framework: vyberte „cypress only", pokud máte Cypress nainstalovaný,
+                jinak nechte na „all" — mock mode vyrobí fiktivní výsledky
+3. Sjeďte níž, zaškrtněte TC s názvem „TC-CP-A1-MAIN-DEMO" (je hned nahoře).
+4. Klikněte na tlačítko „Run selected".
+5. Pod tím se objeví karta Live log. Sledujte řádky, jak se streamují.
+6. Po ~30–60 s (reálný mód) nebo ~3 s (mock mode) budete automaticky
+   přesměrováni na stránku /results/<run_id> s verdiktovou maticí.
+
+DOKUD BĚH PROBÍHÁ, výsledková stránka ukáže "running" pilulku + indikátor
+pollingu. To je normální — automaticky se obnovuje každé 2 s, dokud nebude
+zapsaný envelope. Můžete odejít (Runs / Bugs / About) a vrátit se přes
+stránku Runs později; běh pokračuje na pozadí.
+
+
+ZNÁMÉ PROBLÉMY + ŘEŠENÍ
+-----------------------
+
+→ Pokud vidíte „Run not found: run-...." déle než ~90 s:
+  Dispatcher pravděpodobně tiše selhal (např. Cypress není nainstalovaný,
+  ale framework byl nastaven na „cypress only"). Zkontrolujte log na téže
+  stránce, nebo použijte stránku /about pro zobrazení, které nástroje jsou
+  detekovány na PATH.
+
+→ Pokud start „bouracka-ui" narazí na „[Errno 10048] error while attempting
+  to bind on address ('127.0.0.1', 8424)":
+  Běží jiný proces bouracka-ui. Použijte kill-stragglers.ps1 (přibalený
+  v tomto balíčku) — přesný postup viz TROUBLESHOOTING-CS.md.
+
+→ Pokud pip install selže s „Access Denied" na websockets/speedups.cp310...
+  nebo httptools/parser.cp310...":
+  Stejná příčina — zastaralý proces bouracka-ui drží .pyd soubor.
+  Spusťte kill-stragglers.ps1, pak zkuste pip install znovu.
+
+→ Cokoli jiného: otevřete TROUBLESHOOTING-CS.md.
+
+
+CO DÁL
+------
+Po prvním úspěšném smoke testu nahlédněte do OPERATOR-GUIDE-CS.md pro
+každodenní workflow (spouštění test setů, zakládání bugů, export trace
+bundlů atd.).
+
+
+OBSAH BALÍČKU
+-------------
+  bouracka_ui-0.1.0-py3-none-any.whl       Instalační wheel
+  BOURACKA-TESTPLAN-v0.4.2.xlsx            Testovací workbook (datový zdroj)
+  INSTALL-HP-ELITE-CS.txt                  Tento soubor
+  OPERATOR-GUIDE-CS.md                     Každodenní workflow operátora
+  TROUBLESHOOTING-CS.md                    Postupy pro chybové stavy
+  kill-stragglers.ps1                      Cleanup helper pro zaseklé procesy
+  SHA256SUMS.txt                           Kontrolní součty pro ověření integrity
+
+
+KONTAKT
+-------
+Pete (petr.yamyang@gmail.com) — autor/maintainer
+Problémy / bugy v UI samotném: založte jako BUG-BUI-NNN přes stránku Bugs.
+
+================================================================================
+Konec INSTALL-HP-ELITE-CS.txt
+================================================================================

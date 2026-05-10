@@ -144,6 +144,109 @@ def test_get_runs_unknown_id_404():
 
 
 # ──────────────────────────────────────────────────────────────────────────
+# §5.1 BUG-BUI-002 — GET /api/runs/{rid} status-aware semantics (202/200/404)
+# ──────────────────────────────────────────────────────────────────────────
+
+def test_get_run_in_flight_returns_202():
+    """Run in registry but envelope_path not set → 202 with status payload."""
+    import bouracka_ui.server as srv
+    rid = "run-2026-05-10T22-30-00Z-deadbee"
+    srv._RUN_REGISTRY[rid] = {
+        "run_id": rid, "env": "demo", "tcs": ["TC-CP-A1-MAIN-DEMO"],
+        "frameworks": ["cypress"], "status": "running",
+        "started_at": "2026-05-10T22:30:00Z",
+        "log_lines": ["[bouracka-ui] starting run", "=== cypress ==="],
+        "exit_code": None, "envelope_path": None,
+    }
+    try:
+        r = client.get(f"/api/runs/{rid}")
+        assert r.status_code == 202, r.text
+        j = r.json()
+        assert j["run_id"] == rid
+        assert j["status"] == "running"
+        assert j["envelope_ready"] is False
+        assert j["log_tail"] == ["[bouracka-ui] starting run", "=== cypress ==="]
+        assert j["env"] == "demo"
+        assert j["frameworks"] == ["cypress"]
+    finally:
+        srv._RUN_REGISTRY.pop(rid, None)
+
+
+def test_get_run_done_no_envelope_returns_200_status_payload():
+    """Run finished but no envelope (dispatch failure) → 200 with status payload, not full envelope."""
+    import bouracka_ui.server as srv
+    rid = "run-2026-05-10T22-31-00Z-faded00"
+    srv._RUN_REGISTRY[rid] = {
+        "run_id": rid, "env": "demo", "tcs": ["TC-CP-A1-MAIN-DEMO"],
+        "frameworks": ["cypress"], "status": "done",
+        "started_at": "2026-05-10T22:31:00Z",
+        "log_lines": ["[cypress] tooling not found"],
+        "exit_code": 127, "envelope_path": None,
+    }
+    try:
+        r = client.get(f"/api/runs/{rid}")
+        assert r.status_code == 200, r.text
+        j = r.json()
+        # Status payload, not full envelope (no 'results' key)
+        assert j["status"] == "done"
+        assert "results" not in j
+        assert j["envelope_ready"] is False
+        assert j["exit_code"] == 127
+    finally:
+        srv._RUN_REGISTRY.pop(rid, None)
+
+
+def test_get_run_done_with_envelope_returns_200_full(tmp_path, monkeypatch):
+    """Run completed with envelope on disk → 200 with full v0.1 envelope (has 'results')."""
+    import bouracka_ui.server as srv
+    rid = "run-2026-05-10T22-32-00Z-c0ffee0"
+    envelope = {
+        "schema_version": "1.0", "run_id": rid, "env": "demo",
+        "env_url": "https://demo.bouracka.cz",
+        "started_at": "2026-05-10T22:32:00Z", "ended_at": "2026-05-10T22:32:30Z",
+        "duration_ms": 30000, "frameworks": ["cypress"],
+        "results": [{"tc_code": "TC-CP-A1-MAIN-DEMO",
+                     "verdicts": {"cypress": "pass"},
+                     "parity_status": "not-applicable",
+                     "duration_ms": {"cypress": 1234},
+                     "evidence": {"cypress": {"trace_ref": None,
+                                              "screenshot_ref": None,
+                                              "video_ref": None}},
+                     "covered_tt": [], "error_messages": {"cypress": None},
+                     "framework_specific_notes": {"cypress": ""},
+                     "viewport": "375x667", "bug_ref": None,
+                     "soft_pass_reason": None}],
+        "summary": {"total_tcs": 1, "passed": 1, "failed": 0, "skipped": 0,
+                    "soft_passed": 0, "drift_skip_count": 0,
+                    "parity_pass_count": 0, "parity_divergence_count": 0,
+                    "pass_rate_strict": 1.0, "pass_rate_drift_aware": 1.0},
+        "host": {"os": "test", "host": "smoke", "git_commit": None,
+                 "git_branch": None, "tool_versions": None},
+        "drift_forensic": None,
+        "reporter": {"command": "smoke", "trigger": "manual",
+                     "ci_run_id": None, "operator": "test"},
+    }
+    ep = tmp_path / "cross-framework-demo-2026-05-10.json"
+    ep.write_text(__import__("json").dumps(envelope), encoding="utf-8")
+    srv._RUN_REGISTRY[rid] = {
+        "run_id": rid, "env": "demo", "tcs": ["TC-CP-A1-MAIN-DEMO"],
+        "frameworks": ["cypress"], "status": "done",
+        "started_at": "2026-05-10T22:32:00Z",
+        "log_lines": ["[bouracka-ui] DONE"], "exit_code": 0,
+        "envelope_path": str(ep), "summary": envelope["summary"],
+    }
+    try:
+        r = client.get(f"/api/runs/{rid}")
+        assert r.status_code == 200, r.text
+        j = r.json()
+        assert "results" in j  # full envelope, not status payload
+        assert j["run_id"] == rid
+        assert j["summary"]["passed"] == 1
+    finally:
+        srv._RUN_REGISTRY.pop(rid, None)
+
+
+# ──────────────────────────────────────────────────────────────────────────
 # §6. /api/bugs
 # ──────────────────────────────────────────────────────────────────────────
 

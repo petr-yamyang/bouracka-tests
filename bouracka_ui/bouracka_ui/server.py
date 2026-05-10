@@ -21,7 +21,7 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI, HTTPException, Query, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
 
@@ -246,15 +246,48 @@ async def list_runs(
 
 @app.get("/api/runs/{run_id}")
 async def get_run(run_id: str):
-    """Return the full v0.1 envelope for a run."""
-    # First check active runs registry (in-progress)
+    """Return the full v0.1 envelope for a run.
+
+    Status semantics (BUG-BUI-002, 2026-05-10):
+      - 200 with full v0.1 envelope (has 'results' key)  →  run completed; envelope readable
+      - 202 with status payload (has 'status' key)       →  run in flight ('pending'|'running');
+                                                            payload includes log_tail for live view
+      - 200 with status payload (has 'status' key)       →  run finished but no envelope produced
+                                                            (dispatch failure: see exit_code + log_tail)
+      - 404                                              →  run_id genuinely unknown
+    """
     reg = _RUN_REGISTRY.get(run_id)
-    if reg and reg.get("envelope_path"):
-        try:
-            return json.loads(Path(reg["envelope_path"]).read_text(encoding="utf-8"))
-        except Exception:
-            pass
-    # Otherwise scan disk
+    if reg:
+        ep = reg.get("envelope_path")
+        # Completed + envelope present + readable → full v0.1 envelope (200)
+        if ep:
+            ep_path = Path(ep)
+            if ep_path.exists():
+                try:
+                    return json.loads(ep_path.read_text(encoding="utf-8"))
+                except Exception:
+                    pass  # fall through to status payload
+        # In-flight OR finished-without-envelope → status payload
+        status = reg.get("status", "pending")
+        in_flight = status in ("pending", "running")
+        return JSONResponse(
+            status_code=202 if in_flight else 200,
+            content={
+                "schema_version": __schema_version__,
+                "run_id": run_id,
+                "status": status,                         # pending | running | done | failed
+                "env": reg.get("env"),
+                "tcs": reg.get("tcs"),
+                "frameworks": reg.get("frameworks"),
+                "started_at": reg.get("started_at"),
+                "exit_code": reg.get("exit_code"),
+                "envelope_ready": bool(ep) and Path(ep).exists() if ep else False,
+                "envelope_path": ep,
+                "log_tail": (reg.get("log_lines") or [])[-50:],
+                "summary": reg.get("summary") or {},
+            },
+        )
+    # Not in registry — historic run? scan disk
     if RUNS_DIR.exists():
         for p in RUNS_DIR.glob("cross-framework-*.json"):
             try:

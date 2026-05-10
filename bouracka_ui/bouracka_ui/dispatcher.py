@@ -138,10 +138,16 @@ async def run_async(run_id: str, env: str, tcs: list[str],
     log.append("")
     log.append(f"[bouracka-ui] DONE run_id={run_id}  fw_exits={exit_codes}  cons_exit={cons_rc}")
 
-    reg["status"] = "done"
+    # IMPORTANT publish order: set every other field FIRST, set status="done" LAST.
+    # The SSE log stream + the /api/runs/{rid} polling loop both watch status==
+    # "done" as the termination signal, so by the time they observe that, the
+    # other fields must already be visible. Setting status first creates a race
+    # window where the UI thinks the run is finished but envelope_path is still
+    # None → produces a transient 404 on /results/{rid}. (BUG-BUI-002, 2026-05-10.)
     reg["exit_code"] = max(list(exit_codes.values()) + [cons_rc]) if exit_codes else cons_rc
     reg["envelope_path"] = str(envelope_path) if envelope_path.exists() else None
     reg["summary"] = summary
+    reg["status"] = "done"
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -254,10 +260,11 @@ async def _run_mock(run_id: str, env: str, tcs: list[str],
     log.append(f"[consolidate] written: {out_path}")
     log.append(f"[bouracka-ui] DONE run_id={run_id}")
 
-    reg["status"] = "done"
+    # See run_async() — status="done" must be set LAST. (BUG-BUI-002.)
     reg["exit_code"] = 0
     reg["envelope_path"] = str(out_path)
     reg["summary"] = envelope["summary"]
+    reg["status"] = "done"
 
 
 def _mock_verdict(tc: str, fw: str) -> str:

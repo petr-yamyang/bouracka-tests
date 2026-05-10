@@ -10,6 +10,17 @@ const fmt = {
   pct: n => (n == null ? 'n/a' : (n * 100).toFixed(0) + '%'),
 };
 
+// Minimal HTML escape for content we render verbatim (log tails, error msgs, ...).
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Router
 // ──────────────────────────────────────────────────────────────────────────
@@ -53,6 +64,20 @@ async function api(path, opts = {}) {
   });
   if (!r.ok) throw new Error(`${r.status} ${r.statusText}: ${path}`);
   return r.json();
+}
+
+// Like api() but returns {status, body, ok} without throwing — used for
+// endpoints that intentionally return non-200 status (202 in-flight, 404 NF).
+// BUG-BUI-002: GET /api/runs/{rid} can return 202 (run in flight) which is
+// not an error — caller needs to inspect status code, not just .ok.
+async function apiRaw(path, opts = {}) {
+  const r = await fetch(API + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+  });
+  let body = null;
+  try { body = await r.json(); } catch (_) { /* non-JSON body */ }
+  return { status: r.status, ok: r.ok, body };
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -244,20 +269,105 @@ async function renderRunsList() {
 // ──────────────────────────────────────────────────────────────────────────
 // /results/:rid page
 // ──────────────────────────────────────────────────────────────────────────
+// Module-level poller handle so navigation away stops the loop cleanly.
+let _resultsPollTimer = null;
+
 async function renderResults(args) {
   renderTemplate('tpl-results');
+  // Cancel any pre-existing poller (e.g. user navigated to another results page)
+  if (_resultsPollTimer) { clearTimeout(_resultsPollTimer); _resultsPollTimer = null; }
   const rid = args.join('/');
   if (!rid) {
     $('#app').innerHTML = '<div class="empty">No run_id in URL.</div>';
     return;
   }
-  let env;
-  try {
-    env = await api('/api/runs/' + rid);
-  } catch (e) {
-    $('#app').innerHTML = `<div class="empty">Run not found: ${rid}</div>`;
+  // Stop polling when the route changes (user clicks Run / Bugs / etc.)
+  const stopPollOnHashChange = () => {
+    if (_resultsPollTimer) { clearTimeout(_resultsPollTimer); _resultsPollTimer = null; }
+    window.removeEventListener('hashchange', stopPollOnHashChange);
+  };
+  window.addEventListener('hashchange', stopPollOnHashChange);
+
+  await loadAndRenderResults(rid);
+}
+
+// Single iteration: fetch /api/runs/{rid}, dispatch to one of three render modes
+// (in-flight, dispatch-failed, full-envelope), schedule next poll if needed.
+// BUG-BUI-002: 202 = run in flight → poll; 200 with status field = dispatch
+// failed; 200 with results = render full; 404 = not found.
+async function loadAndRenderResults(rid) {
+  const r = await apiRaw('/api/runs/' + rid);
+  if (r.status === 404) {
+    $('#app').innerHTML = `<div class="empty">Run not found: <code>${rid}</code>.<br>
+      <small>If you just kicked this run off, give it a moment — it may still be spinning up. <a href="#/results/${rid}">Reload</a>.</small></div>`;
     return;
   }
+  if (!r.body) {
+    $('#app').innerHTML = `<div class="empty">Server returned HTTP ${r.status} with no JSON body. <a href="#/results/${rid}">Reload</a>.</div>`;
+    return;
+  }
+  // 202 → run in flight; render progress view and schedule next poll
+  if (r.status === 202) {
+    renderResultsInFlight(rid, r.body);
+    _resultsPollTimer = setTimeout(() => loadAndRenderResults(rid), 2000);
+    return;
+  }
+  // 200 with status field but no results → dispatch finished without producing envelope
+  if (r.body.status && !r.body.results) {
+    renderResultsDispatchFailed(rid, r.body);
+    return;
+  }
+  // 200 with full envelope → normal render
+  renderResultsFullEnvelope(rid, r.body);
+}
+
+function renderResultsInFlight(rid, body) {
+  $('#results-title').innerHTML = `Run <code>${rid}</code> &nbsp; <span class="pill" style="background: var(--c-warn, #f59e0b); color: #fff;">${body.status}</span>`;
+  // Hide cards that need the full envelope until it's ready
+  const matrixCard = $('#results-matrix')?.closest('.card');
+  if (matrixCard) matrixCard.style.display = 'none';
+  if ($('#results-drift')) $('#results-drift').style.display = 'none';
+  // Hide bundle-export buttons until envelope exists
+  if ($('#bundle-export-btn')) $('#bundle-export-btn').style.visibility = 'hidden';
+  if ($('#bundle-export-full-btn')) $('#bundle-export-full-btn').style.visibility = 'hidden';
+
+  const fwList = (body.frameworks || []).join(' · ');
+  const tcList = (body.tcs || []).map(t => `<code>${t}</code>`).join(', ');
+  $('#results-summary').innerHTML = `
+    <p>
+      <span class="pill verdict-pass">env: ${body.env}</span>
+      <span class="pill" style="background: var(--c-ink-5); color: var(--c-ink-2);">${fwList}</span>
+      &nbsp; started ${fmt.ts(body.started_at)}
+    </p>
+    <p><strong>Test cases:</strong> ${tcList}</p>
+    <p><strong>Status:</strong> ${body.status} — polling every 2 s until the envelope is written. You can navigate away; results stay accessible via the Runs page.</p>
+  `;
+  // Re-use #results-provenance card as a log-tail panel during in-flight phase
+  const logTail = (body.log_tail || []).slice(-30).join('\n');
+  $('#results-provenance').innerHTML = `<div class="log-stream" style="max-height: 280px; overflow:auto; white-space: pre-wrap;">${escapeHtml(logTail) || '(awaiting first log lines…)'}</div>`;
+}
+
+function renderResultsDispatchFailed(rid, body) {
+  $('#results-title').innerHTML = `Run <code>${rid}</code> &nbsp; <span class="pill verdict-fail">dispatch failed</span>`;
+  const matrixCard = $('#results-matrix')?.closest('.card');
+  if (matrixCard) matrixCard.style.display = 'none';
+  if ($('#results-drift')) $('#results-drift').style.display = 'none';
+  if ($('#bundle-export-btn')) $('#bundle-export-btn').style.visibility = 'hidden';
+  if ($('#bundle-export-full-btn')) $('#bundle-export-full-btn').style.visibility = 'hidden';
+  $('#results-summary').innerHTML = `
+    <p><span class="pill verdict-fail">no envelope produced</span> &nbsp; status: ${body.status} &nbsp; exit_code: ${body.exit_code}</p>
+    <p>The run finished but <code>tools/consolidate_results.py</code> didn't produce a v0.1 envelope file at <code>${body.envelope_path || 'runs/cross-framework-*.json'}</code>. Most likely cause: framework binary (npx / cypress / playwright) not on PATH on this machine. See log below + check <a href="#/about">/about</a> for tool availability.</p>
+  `;
+  const logTail = (body.log_tail || []).join('\n');
+  $('#results-provenance').innerHTML = `<div class="log-stream" style="max-height: 480px; overflow:auto; white-space: pre-wrap;">${escapeHtml(logTail) || '(no log)'}</div>`;
+}
+
+function renderResultsFullEnvelope(rid, env) {
+  // Reset visibility (in case we transitioned from in-flight view)
+  const matrixCard = $('#results-matrix')?.closest('.card');
+  if (matrixCard) matrixCard.style.display = '';
+  if ($('#bundle-export-btn')) $('#bundle-export-btn').style.visibility = '';
+  if ($('#bundle-export-full-btn')) $('#bundle-export-full-btn').style.visibility = '';
 
   $('#results-title').innerHTML = `Run <code>${rid}</code>`;
 
