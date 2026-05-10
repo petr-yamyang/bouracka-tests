@@ -1,0 +1,28 @@
+Bouračka UI v0.1.0 — install on HP Elite
+PREREQUISITES
+- Python 3.9 or newer (https://www.python.org/downloads/)
+  (verify: open Command Prompt and run `python --version`)
+- The Bouračka test repository checked out to a known location, e.g.:
+  C:\bouracka-tests\
+INSTALL
+  pip install bouracka_ui-0.1.0-py3-none-any.whl
+RUN
+  cd C:\bouracka-tests
+  bouracka-ui --workbook BOURACKA-TESTPLAN-v0.4.2.xlsx
+  (browser opens to http://localhost:8424/)
+WHAT TO DO ON A FAILURE
+  1. Check the About page — schema, tools, workbook detection
+  2. Click "Diagnostics" on /runs page → downloads diag-*.zip
+  3. After any test run, click "Export bundle" on /results/{run_id}
+  4. Send both ZIPs back to Pete via email or shared folder
+  5. Pete imports the bundle on his side via /runs → "Import bundle"
+KNOWN LIMITS
+- Sequential framework execution (cypress → playwright → selenium)
+  one TC at a time. Total time ~2-5 min per TC across 3 frameworks.
+- Workbook (xlsx) cannot be open in Excel while bouracka-ui filing a
+  bug — close Excel first, then "+ New Bug", then reopen.
+- E2E tests on ENV-TST that require live SMS-OTP cannot fully
+  automate the OTP step yet — pick the data-validation portion or
+  use Mockoon profiles per INTEGRATION-CONTRACTS-STRATEGY-v0.2 §3.
+OPERATOR
+  Pete Yamyang — petr.yamyang@gmail.com

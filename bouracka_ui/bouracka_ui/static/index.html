@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bouračka UI — Test Cockpit</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="app-header__title">
+    Bouračka UI <small>v0.1.0 · Test Cockpit</small>
+  </div>
+  <nav class="app-header__nav" id="main-nav">
+    <a href="#/run">Run</a>
+    <a href="#/runs">Runs</a>
+    <a href="#/bugs">Bugs</a>
+    <a href="#/about">About</a>
+  </nav>
+</header>
+
+<main id="app">
+  <div class="loading">Loading…</div>
+</main>
+
+<footer class="app-footer">
+  Bouračka UI · presentation-only test cockpit · forerunner of MI-M-T UI
+  · <a href="#/about">about + design refs</a>
+</footer>
+
+<!-- Page templates (rendered via JS hash routing) -->
+<template id="tpl-run">
+  <h1>Run tests</h1>
+
+  <div class="card">
+    <h2>1. Pick environment</h2>
+    <div class="form-grid">
+      <div class="form-row">
+        <label for="env-select">Environment</label>
+        <select id="env-select"><option>(loading…)</option></select>
+      </div>
+      <div class="form-row">
+        <label for="fw-select">Framework(s)</label>
+        <select id="fw-select">
+          <option value="all">all (cypress + playwright + selenium)</option>
+          <option value="cypress">cypress only</option>
+          <option value="playwright">playwright only</option>
+          <option value="selenium">selenium only</option>
+        </select>
+      </div>
+    </div>
+    <p id="env-meta" style="font-size: var(--fs-sm); color: var(--c-ink-3);"></p>
+  </div>
+
+  <div class="card">
+    <h2>2. Select tests for testset</h2>
+    <div class="filter-row">
+      <button id="select-all-btn">Select all</button>
+      <button id="select-none-btn">Clear</button>
+      <span id="tc-count" style="margin-left: auto; color: var(--c-ink-3);">0 selected</span>
+    </div>
+    <div class="tc-grid" id="tc-grid"><div class="loading">Loading TCs…</div></div>
+  </div>
+
+  <div class="card">
+    <button id="run-btn" class="btn primary" disabled>3. Run selected</button>
+    <span id="run-status" style="margin-left: var(--sp-3); color: var(--c-ink-3);"></span>
+  </div>
+
+  <div class="card" id="log-card" style="display:none">
+    <h2>Live log</h2>
+    <div class="log-stream" id="log-stream"></div>
+  </div>
+</template>
+
+<template id="tpl-runs">
+  <h1>Past runs</h1>
+  <div class="filter-row">
+    <label>Env <select id="runs-env-filter"><option value="">(all)</option></select></label>
+    <label>Last <select id="runs-limit"><option value="20">20</option><option value="50" selected>50</option><option value="100">100</option></select> runs</label>
+    <button id="runs-refresh">Refresh</button>
+    <button id="bundle-import-btn" style="margin-left: auto;" title="Import a trace-bundle ZIP from another machine (HP Elite air-gap workflow)">⬆ Import bundle</button>
+    <input type="file" id="bundle-file-input" accept=".zip" style="display:none">
+    <a href="/api/diagnostics/snapshot" class="btn" download title="Download a no-run diagnostics snapshot ZIP">⬇ Diagnostics</a>
+  </div>
+  <table id="runs-table">
+    <thead>
+      <tr>
+        <th data-sort="started_at">Started</th>
+        <th data-sort="env">Env</th>
+        <th data-sort="total_tcs">TCs</th>
+        <th data-sort="passed">Pass</th>
+        <th data-sort="failed">Fail</th>
+        <th data-sort="skipped">Skip</th>
+        <th data-sort="parity_divergence_count">Diverge</th>
+        <th>Run ID</th>
+      </tr>
+    </thead>
+    <tbody><tr><td colspan="8" class="loading">Loading…</td></tr></tbody>
+  </table>
+</template>
+
+<template id="tpl-results">
+  <h1 id="results-title">Run details</h1>
+  <div class="filter-row" style="margin-bottom: var(--sp-4)">
+    <a href="#/runs">← back to runs</a>
+    <a id="bundle-export-btn" class="btn" style="margin-left: auto;" download
+       title="Download a self-describing trace-bundle ZIP (HP Elite air-gap workflow)">⬇ Export bundle</a>
+    <a id="bundle-export-full-btn" class="btn" download
+       title="Download bundle WITH videos + traces (large)">⬇ Export bundle (full)</a>
+  </div>
+  <div class="card" id="results-summary"></div>
+  <div class="card">
+    <h2>Verdict matrix</h2>
+    <table id="results-matrix"><thead></thead><tbody></tbody></table>
+  </div>
+  <div class="card" id="results-drift" style="display:none">
+    <h2>Drift forensic</h2>
+    <div id="results-drift-body"></div>
+  </div>
+  <div class="card">
+    <h2>Provenance</h2>
+    <div id="results-provenance" style="font-family: var(--f-mono); font-size: var(--fs-sm);"></div>
+  </div>
+</template>
+
+<template id="tpl-bugs">
+  <h1>Bugs</h1>
+  <div class="filter-row">
+    <label>Status <select id="bugs-status">
+      <option value="">(all)</option>
+      <option value="open">open</option>
+      <option value="closed">closed</option>
+      <option value="investigating">investigating</option>
+    </select></label>
+    <label>Severity <select id="bugs-severity">
+      <option value="">(all)</option>
+      <option value="A">A — critical</option>
+      <option value="B">B — high</option>
+      <option value="C">C — low</option>
+      <option value="X">X — undefined</option>
+    </select></label>
+    <button id="bugs-refresh">Refresh</button>
+    <button id="bugs-new" class="primary" style="margin-left: auto;">+ New Bug</button>
+  </div>
+  <table id="bugs-table">
+    <thead>
+      <tr>
+        <th data-sort="code">Code</th>
+        <th data-sort="severity">Sev</th>
+        <th data-sort="status">Status</th>
+        <th>Title</th>
+        <th data-sort="env_where_present">Env</th>
+        <th>Linked TC</th>
+      </tr>
+    </thead>
+    <tbody><tr><td colspan="6" class="loading">Loading…</td></tr></tbody>
+  </table>
+
+  <!-- New-bug form (toggled hidden/shown) -->
+  <div class="card" id="bug-form" style="display:none; margin-top: var(--sp-6);">
+    <h2>+ New Bug</h2>
+    <div class="form-row">
+      <label for="bf-name">Title (English)</label>
+      <input id="bf-name" type="text" placeholder="Short descriptive title">
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label for="bf-severity">Severity</label>
+        <select id="bf-severity">
+          <option value="A">A — critical</option>
+          <option value="B" selected>B — high</option>
+          <option value="C">C — low</option>
+          <option value="X">X — undefined</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="bf-env">Env where present</label>
+        <select id="bf-env"><option>(loading…)</option></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label for="bf-tc">Linked TC code (optional)</label>
+      <input id="bf-tc" type="text" placeholder="TC-CP-A2-ALT-1">
+    </div>
+    <div class="form-row">
+      <label for="bf-repro">Reproduction steps</label>
+      <textarea id="bf-repro" rows="3"></textarea>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label for="bf-expected">Expected</label>
+        <textarea id="bf-expected" rows="2"></textarea>
+      </div>
+      <div class="form-row">
+        <label for="bf-actual">Actual</label>
+        <textarea id="bf-actual" rows="2"></textarea>
+      </div>
+    </div>
+    <button id="bf-submit" class="primary">File bug</button>
+    <button id="bf-cancel">Cancel</button>
+    <span id="bf-msg" style="margin-left: var(--sp-3);"></span>
+  </div>
+</template>
+
+<template id="tpl-about">
+  <h1>About</h1>
+  <div class="card">
+    <h2>bouracka-ui</h2>
+    <p>Local presentation-layer UI for the Bouračka test suite. Wraps existing
+    test runners (Cypress / Playwright / pytest+Selenium) and the
+    <code>tools/consolidate_results.py</code> cross-framework consolidator.</p>
+    <p>Designed as the forerunner of the MI-M-T UI prototype. Uses the v0.1
+    cross-framework result schema as its binding wire format. Visual identity
+    reuses the mim2000 azure baseline from the 3-fold-path design tokens.</p>
+  </div>
+  <div class="card">
+    <h2>Health check</h2>
+    <div id="health-status" style="font-family: var(--f-mono); font-size: var(--fs-sm);">Loading…</div>
+  </div>
+  <div class="card">
+    <h2>References</h2>
+    <ul style="margin-left: var(--sp-6);">
+      <li><code>_config/BOURACKA-UI-DESIGN-v0.1-2026-05-10.md</code> — design doc</li>
+      <li><code>_specs/CROSS-FRAMEWORK-RESULT-SCHEMA-v0.1.md</code> — schema spec (binding)</li>
+      <li><code>_config/BOURACKA-TES-PRESENTATION-LAYER-DESIGN-v0.1-2026-05-09.md</code> — V0/V1/V2 context</li>
+      <li><code>_config/3FP-PHASE-5-ARCH-E01-SCOPING-v0.1-2026-05-10.md</code> — shared library scope (cross-arc)</li>
+    </ul>
+  </div>
+</template>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

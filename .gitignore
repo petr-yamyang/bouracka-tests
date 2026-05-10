@@ -75,3 +75,16 @@ BOURACKA-TESTPLAN-v0.4.1.xlsx
 _install/INSTALL-PLAN-SUPNB-v0.1.md         # contains SUPNB001 hostname + petr.zemla user
 _install/SECOPS-COMPONENTS-CS.md             # ČKP SecOps audit doc — internal
 recon/raw/                                  # raw transcripts may contain unredacted operator data
+
+# Python build artefacts
+bouracka_ui/build/
+bouracka_ui/*.egg-info/
+bouracka_ui/UNKNOWN.egg-info/
+bouracka_ui/bouracka_ui-0.1.0/
+bouracka_ui/dist/*
+!bouracka_ui/dist/INSTALL-HP-ELITE.txt
+bouracka_ui/__pycache__/
+bouracka_ui/bouracka_ui/__pycache__/
+bouracka_ui/tests/__pycache__/
+bouracka_ui/.pytest_cache/
+*.egg-info/

@@ -7,6 +7,170 @@ TestPlan version bumps are decoupled** (see `_specs/EMAIL-DELIVERABILITY-RULES-v
 
 ---
 
+## [v0.5.5] — 2026-05-10 — bouracka-ui v0.1.0 (presentation-layer UI + HP Elite air-gap workflow)
+
+### Added — `bouracka_ui/` package (separate Python wheel)
+
+- **Local presentation-layer UI** for the Bouračka test suite. Wraps existing
+  test runners (cypress + playwright + pytest+selenium) + `tools/consolidate_results.py`
+  v0.5.4. Forerunner of MI-M-T UI prototype.
+- **Scope binding (presentation only):** four functions — env pick · testset
+  select · run trigger · results+bugs JIRA-style listing. Zero new business
+  logic; all execution delegates to existing scripts.
+- **12 REST endpoints** per `_config/BOURACKA-UI-DESIGN-v0.1-2026-05-10.md` §3.1:
+  /api/health · /api/envs · /api/tcs · /api/runs (GET+POST) · /api/runs/{rid} ·
+  /api/runs/{rid}/log (SSE) · /api/bugs (GET+POST) · /api/runs/{rid}/bundle ·
+  /api/bundles/import · /api/diagnostics/snapshot
+- **4-page SPA** (vanilla JS, hash routing): /run · /runs · /results/{rid} · /bugs · /about
+- **Aesthetic reuse:** `static/design-tokens.css` lifted directly from
+  `mim2000-theme/style.css` :root block (azure baseline; Bouračka on the
+  MI-M-T arc per `_config/3FP-PHASE-5-ARCH-E01-SCOPING-v0.1-2026-05-10.md`
+  §6.4 + OQ-3FP-27). Forward-compatible swap to library `@import` at v0.1.1.
+
+### Added — Trace bundle export/import (HP Elite air-gap workflow)
+
+- `bouracka_ui/trace_bundle.py` — self-describing trace-bundle ZIP:
+  envelope.json + digest.md + per-framework reporter outputs (+ optional
+  evidence: screenshots, videos, traces) + server-log.txt + system info +
+  workbook snapshot CSVs + repro.sh + manifest.json + README.md.
+- `GET /api/runs/{rid}/bundle?full=<bool>&workbook=<bool>` — export
+- `POST /api/bundles/import` (multipart/form-data) — import on Pete's
+  inspection machine; envelope persisted into runs/, ZIP archived under
+  `imported-bundles/`. Run shows up in /runs listing post-import.
+- `GET /api/diagnostics/snapshot` — no-run state dump (system info + tool
+  versions + workbook sanity + recent server log) for "UI itself
+  misbehaving" remote debugging.
+- **Designed for HP Elite air-gap:** testers run on HP Elite, ship ZIP
+  via USB/email/shared folder, Pete imports for local inspection without
+  SUPIN environment access.
+
+### Added — Real subprocess dispatcher (`dispatcher.py`)
+
+- Cypress: `npx cypress run --spec <glob> --env baseUrl=<env-url>`
+- Playwright: `npx playwright test --grep <regex>`
+- Selenium: `python -m pytest selenium/tests/ -k <expr> --json-report`
+- Then: `python tools/consolidate_results.py --env <env> --run-id <rid>`
+- Async subprocess + line-buffered stdout streaming to per-run log via SSE
+- `BOURACKA_UI_DISPATCH_MODE=mock` falls back to synthetic envelope (used
+  when test runners aren't on PATH; useful for dev demos)
+
+### Added — Workbook readers (`workbook_io.py`)
+
+- Real openpyxl reads of `02_TestCases`, `04_TestEnvironments`, `08_Bugs`
+- `append_bug()` writes new bugs to `08_Bugs` with auto-incrementing
+  BUG-NNN code; raises `WorkbookLockedError` (→ 409) if Excel has the
+  workbook open
+- Falls back to synthetic mocks when the workbook is missing/unreadable
+
+### Added — Tests
+
+- `tests/test_smoke.py` — **22/22 PASS** covering all 12 endpoints,
+  bundle export round-trip, bundle import (negative paths), diagnostics
+  snapshot, schema-conformance checks
+
+### CLI
+
+- Console script `bouracka-ui` (entry: `bouracka_ui.cli:main`) with
+  `--port` `--workbook` `--runs-dir` `--no-browser` `--reload` flags;
+  auto-opens browser to localhost on startup
+
+### Reference
+
+- `_config/BOURACKA-UI-DESIGN-v0.1-2026-05-10.md` (binding design)
+- `_config/BOURACKA-TOMORROW-HANDOFF-2026-05-11.md` (ThinkPad packaging brief)
+- `_specs/CROSS-FRAMEWORK-RESULT-SCHEMA-v0.1.md` (binding wire format)
+- closes Phase 1 + Phase 3 (real dispatcher) + new Phase 7 (bundle workflow)
+  per design §6
+
+---
+
+## [v0.5.4] — 2026-05-10 — `consolidate_results.py` schema migration to v0.1 envelope
+
+### Changed — `tools/consolidate_results.py` v0.5.2 → v0.5.4 (BREAKING for downstream JSON consumers)
+
+- Output JSON shape rewritten to conform to `_specs/CROSS-FRAMEWORK-RESULT-SCHEMA-v0.1.md`
+  (binding from 2026-05-10; closes OQ-MB-14).
+- Pivoted from flat per-(framework × TC) rows to nested per-TC envelopes with
+  `verdicts: {fw → status}` map. One row per TC (was: one row per fw × TC).
+- New top-level fields: `schema_version`, `run_id`, `env_url`, `started_at`,
+  `ended_at`, `duration_ms`, `host`, `drift_forensic`, `reporter`.
+- Verdict enum extended from 4 values to 7: added `skip-drift`, `skip-other`
+  (split of legacy `skipped`), `error`, `missing`. Producers map old `skipped`
+  → `skip-drift` if reason matches `DRIFT-*` marker per schema §4.4, else
+  `skip-other`.
+- New `parity_status` field per TC: `agree | divergence | not-applicable`
+  computed at producer-time per schema §3.4 (was: divergences listed in a
+  separate top-level array).
+- New `summary` block: `total_tcs`, `passed`, `failed`, `skipped`,
+  `soft_passed`, `drift_skip_count`, `parity_pass_count`,
+  `parity_divergence_count`, `pass_rate_strict`, `pass_rate_drift_aware`.
+- Per-result evidence expanded: `evidence.<fw>.{trace_ref, screenshot_ref,
+  video_ref}` (was: single `trace_ref` per result).
+
+### Added — schema validation hook
+
+- Producer-side `_validate_envelope()` runs §5.1 assertions before write;
+  schema violations exit with code 3 and don't write the JSON.
+
+### Added — CLI flags
+
+- `--env <enum>` — environment tag from `{demo, tst, uat, prod-readonly,
+  prod-writable}`. Auto-inferred from `--env-url` hostname if omitted.
+- `--env-url <url>` — canonical env URL; replaces `--base-url` (kept as alias
+  for back-compat).
+- `--run-id <string>` — explicit run id (regex
+  `^run-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z-[0-9a-f]{7}$`); auto-generated
+  from UTC-now + git short hash if omitted.
+- `--reporter-command <string>` — captures the run trigger command in
+  `reporter.command`.
+- `--trigger {manual|ci|scheduled|api}`.
+- `--ci-run-id <string>` — for CI-triggered runs.
+
+### Added — host + provenance capture
+
+- `host.os`, `host.host`, `host.git_commit`, `host.git_branch` (best-effort
+  via subprocess; absent fields fall back to `null`).
+
+### Added — drift-forensic synthesis
+
+- `_synthesize_drift_forensic()` parses `DRIFT-*` markers + correlation IDs
+  from selenium/cypress/playwright skip reasons and builds the
+  `drift_forensic` block automatically. Currently recognized: `recaptcha-v2`,
+  `recaptcha-v3`, `rate-limit`. Uncategorized → `recaptcha-v3` default.
+
+### File output paths
+
+- JSON: `runs/cross-framework-<env>-<date>.json` (was:
+  `runs/cross-framework-<date>.json` — env tag now in filename for
+  multi-env aggregation in V1 dashboard).
+- Markdown: `runs/cross-framework-<env>-<date>.md`.
+
+### Tests
+
+- `tests/tools/test_consolidate_results_v05_4_schema.py` — 21 tests covering
+  envelope shape, pivot correctness, parity computation, summary derivation,
+  soft-pass propagation, skip-drift classification, drift-forensic synthesis.
+  All 21 PASS on synthetic 3-framework × 4-TC fixture.
+
+### Migration note for downstream
+
+- `tools/append_test_run_result.py` (legacy UPSERT to `13_TestExecutionSummary`):
+  v0.5.4 output is no longer a flat array. The next ThinkPad-Sonnet pass should
+  either (a) wrap append_test_run_result.py to consume the new shape, OR
+  (b) pivot back to flat at workbook-write time inside `tools/tes_present.py`
+  (Phase-2 deliverable per `_config/BOURACKA-TES-PRESENTATION-LAYER-DESIGN-v0.1`
+  §6.2).
+- V0/V1/V2 of TES presentation layer can now consume the canonical v0.1 shape
+  unchanged — that's the point of this migration.
+
+### Reference
+
+- `_specs/CROSS-FRAMEWORK-RESULT-SCHEMA-v0.1.md` (binding spec)
+- `_config/BOURACKA-TES-PRESENTATION-LAYER-DESIGN-v0.1-2026-05-09.md` §6.1 + §6.2
+- closes OQ-MB-14 from `_specs/from-macbook/HANDOVER-THINKPAD-OPUS-CP-SUPIN-05-CONVERGED-2026-05-09.md` §5.3
+
+---
+
 ## [v0.5.3] — 2026-05-08 — Cypress `covers` import fix (8 spec files)
 
 ### Fixed — `covers` imported from wrong module in 8 Cypress spec files

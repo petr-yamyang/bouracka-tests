@@ -1,0 +1,81 @@
+/* ════════════════════════════════════════════════════════════════════════
+   bouracka-ui design tokens v0.1
+   ────────────────────────────────────────────────────────────────────────
+   Lifted directly from mim2000-theme/style.css :root { } block (azure
+   baseline; see _config/3FP-PHASE-5-ARCH-E01-SCOPING-v0.1-2026-05-10.md
+   §6.4 + OQ-3FP-27 for rationale: Bouračka inherits mim2000 azure since
+   it's on the MI-M-T arc).
+
+   At v0.1 these tokens are inlined here. v0.1.1 swaps to:
+     @import url("../../../../3-fold-path/library/design-tokens/design-tokens.css");
+     @import url("../../../../3-fold-path/library/design-tokens/design-tokens-mim2000.css");
+   …once the library lands per Phase-5 §6.2.
+   ════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Colour: mim2000 azure baseline ─────────────────────────────────── */
+  --c-primary:   #0b5c78;
+  --c-secondary: #0e7a9e;
+  --c-accent:    #1da1c8;
+  --c-accent-2:  #5bc4e0;
+  --c-bg:        #eef6fa;
+  --c-surface:   #f8fcfe;
+  --c-ink:       #0c2535;
+  --c-ink-2:     #1e4258;
+  --c-ink-3:     #4a7a95;
+  --c-ink-4:     #8ab5ca;
+  --c-ink-5:     #cce5f0;
+  --c-border:    #b0d4e4;
+
+  /* ── CAST severity / status palette (per GRAPHICAL-COMPONENTS-MANUAL §3.1) */
+  --c-sev-A:    #c62828;           /* critical — red */
+  --c-sev-B:    #ef6c00;           /* high — amber-orange */
+  --c-sev-C:    #fbc02d;           /* low — amber */
+  --c-sev-X:    #9e9e9e;           /* undefined — grey */
+  --c-status-pass:    #2c7a4b;     /* test-passed green */
+  --c-status-fail:    #c62828;     /* failure red */
+  --c-status-skip-d:  #5a7796;     /* skip-drift slate */
+  --c-status-skip-o:  #9e9e9e;     /* skip-other grey */
+  --c-status-soft:    #b8860b;     /* soft-pass amber */
+  --c-status-error:   #c62828;     /* error red */
+  --c-status-missing: #d4d4d4;     /* missing pale */
+
+  /* ── Typography ─────────────────────────────────────────────────────── */
+  --f-body:   'Georgia', serif;
+  --f-ui:     'Inter', 'Segoe UI', sans-serif;
+  --f-mono:   'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+  --fs-xs:    0.75rem;
+  --fs-sm:    0.875rem;
+  --fs-md:    1rem;
+  --fs-lg:    1.125rem;
+  --fs-xl:    1.25rem;
+  --fs-2xl:   1.5rem;
+  --fs-3xl:   2rem;
+  --fs-4xl:   2.5rem;
+  --lh-tight: 1.25;
+  --lh-snug:  1.4;
+  --lh-base:  1.7;
+
+  /* ── Spacing (4px base) ─────────────────────────────────────────────── */
+  --sp-1:  0.25rem;
+  --sp-2:  0.5rem;
+  --sp-3:  0.75rem;
+  --sp-4:  1rem;
+  --sp-6:  1.5rem;
+  --sp-8:  2rem;
+  --sp-10: 2.5rem;
+  --sp-12: 3rem;
+  --sp-16: 4rem;
+  --sp-20: 5rem;
+  --sp-24: 6rem;
+
+  /* ── Borders + radii ────────────────────────────────────────────────── */
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 16px;
+
+  /* ── Layout widths ──────────────────────────────────────────────────── */
+  --w-content: 680px;
+  --w-wide:    1200px;       /* dashboard / data UI max — per manual §3.1 */
+  --w-narrow:  600px;        /* form column */
+}
