@@ -32,7 +32,9 @@ dependencies = [
     "uvicorn[standard]>=0.27",
     "openpyxl>=3.1",
     "sse-starlette>=2.0",
-    "python-multipart>=0.0.9",  # required for /api/bundles/import file upload
+    "python-multipart>=0.0.9",     # required for /api/bundles/import file upload
+    "pytest>=8.0",                 # required at runtime: dispatcher invokes pytest+selenium subprocess
+    "pytest-json-report>=1.5",     # required for selenium framework's --json-report flag (BUG-BUI-004)
 ]
 
 [project.optional-dependencies]

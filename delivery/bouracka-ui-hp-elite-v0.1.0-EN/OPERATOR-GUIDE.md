@@ -161,8 +161,16 @@ These reach me (Pete) and feed into the next bouracka-ui release.
 
 ---
 
-## §9. Version history
+## §9. Navigation note — in-app Back button
 
-- **v0.1.0** (2026-05-10) — first release. Includes BUG-BUI-001 fix (Windows NTFS filename safety for run_ids) and BUG-BUI-002 fix (202 in-flight semantics + UI polling to prevent transient "Run not found" pages).
+The header has a **← Back** button to the left of the page-nav links. It uses the SPA's own history stack via `window.history.back()`, which is more predictable than the browser's Back arrow with hash routing. Use the in-app Back button by preference.
+
+## §10. Version history
+
+- **v0.1.0** (2026-05-11) — first release. Includes:
+  - BUG-BUI-001: Windows NTFS filename safety for run_ids
+  - BUG-BUI-002: 202 in-flight semantics + UI polling (no transient "Run not found")
+  - BUG-BUI-003: Provenance card dynamically retitled to "Live log" / "Dispatch log" by state
+  - BUG-BUI-004: REPO_ROOT auto-detect from CWD (fixes wheel-install dispatch) + in-app Back button + multi-cause dispatch-failed message + `pytest-json-report` runtime dep
 
 End of OPERATOR-GUIDE.md

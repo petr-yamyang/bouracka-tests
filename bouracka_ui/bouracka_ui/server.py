@@ -32,10 +32,62 @@ from . import workbook_io, dispatcher, trace_bundle
 # Configuration — overridable via environment variables for CLI flag passthrough
 # ──────────────────────────────────────────────────────────────────────────
 
-REPO_ROOT = Path(os.environ.get(
-    "BOURACKA_UI_REPO_ROOT",
-    str(Path(__file__).resolve().parents[3])  # .../bouracka-tests/
-))
+def _resolve_repo_root() -> Path:
+    """Locate the bouracka-tests repo root robustly.
+
+    BUG-BUI-004 (2026-05-11): the original `Path(__file__).resolve().parents[3]`
+    heuristic only worked for EDITABLE installs (where __file__ lives at
+    bouracka-tests/bouracka_ui/bouracka_ui/server.py and parents[3] is the
+    repo root). After a non-editable `pip install` from a wheel, __file__
+    lives at .venv/Lib/site-packages/bouracka_ui/server.py and parents[3]
+    resolves to .venv/ — breaking dispatcher script paths and runs/ envelope
+    discovery. This function probes more carefully.
+
+    Resolution order:
+      1. BOURACKA_UI_REPO_ROOT env var (explicit override; always wins)
+      2. Walk up from CWD looking for tools/consolidate_results.py or
+         a BOURACKA-TESTPLAN-*.xlsx workbook (covers the common case of
+         the user running `bouracka-ui` from inside bouracka-tests/)
+      3. Walk up from __file__ looking for the same markers (covers
+         editable installs where the package lives inside the repo)
+      4. Last-resort fallback to parents[3] (legacy behaviour; will be
+         wrong for wheel installs but at least produces a deterministic
+         answer for diagnostics)
+    """
+    env = os.environ.get("BOURACKA_UI_REPO_ROOT")
+    if env:
+        return Path(env)
+
+    def _has_marker(d: Path) -> bool:
+        if (d / "tools" / "consolidate_results.py").exists():
+            return True
+        try:
+            if any(d.glob("BOURACKA-TESTPLAN-*.xlsx")):
+                return True
+        except (OSError, PermissionError):
+            pass
+        return False
+
+    # 2. Walk up from CWD
+    try:
+        cwd = Path.cwd()
+        for candidate in [cwd, *cwd.parents]:
+            if _has_marker(candidate):
+                return candidate
+    except (OSError, FileNotFoundError):
+        pass
+
+    # 3. Walk up from __file__
+    here = Path(__file__).resolve()
+    for candidate in here.parents:
+        if _has_marker(candidate):
+            return candidate
+
+    # 4. Legacy fallback
+    return here.parents[3]
+
+
+REPO_ROOT = _resolve_repo_root()
 WORKBOOK_PATH = Path(os.environ.get(
     "BOURACKA_UI_WORKBOOK",
     str(REPO_ROOT / "BOURACKA-TESTPLAN-v0.4.2.xlsx")

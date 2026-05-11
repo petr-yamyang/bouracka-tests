@@ -196,6 +196,39 @@ def test_get_run_done_no_envelope_returns_200_status_payload():
         srv._RUN_REGISTRY.pop(rid, None)
 
 
+def test_resolve_repo_root_env_var_wins(tmp_path, monkeypatch):
+    """BUG-BUI-004: BOURACKA_UI_REPO_ROOT env var is an explicit override that
+    always wins, regardless of CWD or __file__ heuristics."""
+    import bouracka_ui.server as srv
+    monkeypatch.setenv("BOURACKA_UI_REPO_ROOT", str(tmp_path))
+    result = srv._resolve_repo_root()
+    assert result == tmp_path
+
+
+def test_resolve_repo_root_finds_marker_from_cwd(tmp_path, monkeypatch):
+    """BUG-BUI-004: with no env override, _resolve_repo_root walks up from CWD
+    looking for the tools/consolidate_results.py marker. Critical for
+    wheel-install scenarios where __file__ lives in .venv/Lib/site-packages/."""
+    import bouracka_ui.server as srv
+    # Build a fake repo with the canonical marker
+    (tmp_path / "tools").mkdir()
+    (tmp_path / "tools" / "consolidate_results.py").write_text("# fake")
+    monkeypatch.delenv("BOURACKA_UI_REPO_ROOT", raising=False)
+    monkeypatch.chdir(tmp_path)
+    result = srv._resolve_repo_root()
+    assert result == tmp_path
+
+
+def test_resolve_repo_root_finds_workbook_marker(tmp_path, monkeypatch):
+    """BUG-BUI-004: BOURACKA-TESTPLAN-*.xlsx in CWD also counts as a marker."""
+    import bouracka_ui.server as srv
+    (tmp_path / "BOURACKA-TESTPLAN-v0.4.2.xlsx").write_text("fake")
+    monkeypatch.delenv("BOURACKA_UI_REPO_ROOT", raising=False)
+    monkeypatch.chdir(tmp_path)
+    result = srv._resolve_repo_root()
+    assert result == tmp_path
+
+
 def test_get_run_done_with_envelope_returns_200_full(tmp_path, monkeypatch):
     """Run completed with envelope on disk → 200 with full v0.1 envelope (has 'results')."""
     import bouracka_ui.server as srv

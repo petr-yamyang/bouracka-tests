@@ -21,6 +21,20 @@ function escapeHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
+// On the results page we hide the matrix + drift cards and reuse the
+// "Provenance" card as a log-tail panel during in-flight + dispatch-failed
+// states. Without retitling the card header, users see "Provenance" above
+// log lines — confusing. This helper renames the header in lockstep with
+// what the panel actually contains.
+function retitleProvCard(newTitle) {
+  const provBody = document.querySelector('#results-provenance');
+  if (!provBody) return;
+  const card = provBody.closest('.card');
+  if (!card) return;
+  const h2 = card.querySelector('h2');
+  if (h2) h2.textContent = newTitle;
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Router
 // ──────────────────────────────────────────────────────────────────────────
@@ -45,7 +59,30 @@ function route() {
 }
 
 window.addEventListener('hashchange', route);
-window.addEventListener('DOMContentLoaded', route);
+window.addEventListener('DOMContentLoaded', () => {
+  route();
+  // BUG-BUI-004: wire the in-app Back button. Uses SPA history so the UX is
+  // identical across browsers and predictable inside hash routing. The button
+  // is disabled when there's nowhere to go back to (first page in history).
+  const backBtn = document.getElementById('back-btn');
+  if (backBtn) {
+    backBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.history.back();
+    });
+    // Initial enabled state — best-effort; history.length > 1 means we have
+    // at least one prior entry. Not perfect (length includes the current
+    // entry + any in-tab navigations) but good enough to grey out on first
+    // load.
+    backBtn.disabled = (window.history.length <= 1);
+  }
+});
+
+// Keep Back-button enabled-state in sync as the user navigates.
+window.addEventListener('hashchange', () => {
+  const backBtn = document.getElementById('back-btn');
+  if (backBtn) backBtn.disabled = (window.history.length <= 1);
+});
 
 function renderTemplate(id) {
   const tpl = $('#' + id);
@@ -330,6 +367,9 @@ function renderResultsInFlight(rid, body) {
   // Hide bundle-export buttons until envelope exists
   if ($('#bundle-export-btn')) $('#bundle-export-btn').style.visibility = 'hidden';
   if ($('#bundle-export-full-btn')) $('#bundle-export-full-btn').style.visibility = 'hidden';
+  // Re-title the provenance card as "Live log" while in flight (the panel's
+  // contents are log lines, not git/host provenance).
+  retitleProvCard('Live log');
 
   const fwList = (body.frameworks || []).join(' · ');
   const tcList = (body.tcs || []).map(t => `<code>${t}</code>`).join(', ');
@@ -354,9 +394,17 @@ function renderResultsDispatchFailed(rid, body) {
   if ($('#results-drift')) $('#results-drift').style.display = 'none';
   if ($('#bundle-export-btn')) $('#bundle-export-btn').style.visibility = 'hidden';
   if ($('#bundle-export-full-btn')) $('#bundle-export-full-btn').style.visibility = 'hidden';
+  retitleProvCard('Dispatch log');
   $('#results-summary').innerHTML = `
     <p><span class="pill verdict-fail">no envelope produced</span> &nbsp; status: ${body.status} &nbsp; exit_code: ${body.exit_code}</p>
-    <p>The run finished but <code>tools/consolidate_results.py</code> didn't produce a v0.1 envelope file at <code>${body.envelope_path || 'runs/cross-framework-*.json'}</code>. Most likely cause: framework binary (npx / cypress / playwright) not on PATH on this machine. See log below + check <a href="#/about">/about</a> for tool availability.</p>
+    <p>The run finished but <code>tools/consolidate_results.py</code> didn't produce a v0.1 envelope file at <code>${body.envelope_path || 'runs/cross-framework-*.json'}</code>. Inspect the log below to identify which of the following applies:</p>
+    <ul style="margin-left: var(--sp-6); line-height: 1.6;">
+      <li><strong>Framework binary missing on PATH</strong> — <code>npx</code> / <code>cypress</code> / <code>playwright</code> not installed or not in PATH on this machine. Symptom: <code>tooling not found: [WinError 2]</code> in log.</li>
+      <li><strong>pytest plugin missing</strong> — <code>pytest-json-report</code> not installed in this venv. Symptom: <code>unrecognized arguments: --json-report</code> from selenium suite. Fix: <code>pip install pytest-json-report</code> (auto-installed in v0.1.0+).</li>
+      <li><strong>Repo root mis-detected</strong> — bouracka-ui couldn't locate <code>tools/consolidate_results.py</code> relative to where it's running. Symptom: log shows consolidator path inside <code>.venv/</code> or a parent. Fix: set <code>BOURACKA_UI_REPO_ROOT</code> env var to the bouracka-tests directory.</li>
+      <li><strong>No test specs matched</strong> — TC selection produced a glob that didn't resolve to any spec files. Symptom: framework exits 0 but with no test output.</li>
+    </ul>
+    <p style="margin-top: var(--sp-3);">Tool availability snapshot is on the <a href="#/about">About</a> page.</p>
   `;
   const logTail = (body.log_tail || []).join('\n');
   $('#results-provenance').innerHTML = `<div class="log-stream" style="max-height: 480px; overflow:auto; white-space: pre-wrap;">${escapeHtml(logTail) || '(no log)'}</div>`;
@@ -368,6 +416,9 @@ function renderResultsFullEnvelope(rid, env) {
   if (matrixCard) matrixCard.style.display = '';
   if ($('#bundle-export-btn')) $('#bundle-export-btn').style.visibility = '';
   if ($('#bundle-export-full-btn')) $('#bundle-export-full-btn').style.visibility = '';
+  // Restore the provenance card's title (we may have retitled it during a
+  // prior in-flight or dispatch-failed render).
+  retitleProvCard('Provenance');
 
   $('#results-title').innerHTML = `Run <code>${rid}</code>`;
 

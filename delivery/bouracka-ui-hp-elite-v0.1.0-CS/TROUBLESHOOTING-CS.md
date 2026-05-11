@@ -83,21 +83,35 @@ Pokud máte buildy starší než v0.1.0 a nemůžete upgradovat, workaround je: 
 
 **Symptom:** stránka výsledků ukazuje `dispatch failed — no envelope produced`. Nebo to vidíte s „Run not found", pokud jste na buildu v0.0.x.
 
-**Proč:** dispatcher zkusil spustit Cypress / Playwright / Selenium, ale žádný z nich není nainstalovaný (žádný `npx` na PATH atd.).
+V v0.1.0+ stránka „dispatch failed" zobrazuje seznam čtyř nejčastějších kandidátních příčin přímo na stránce; vyberte tu, která odpovídá vašemu logu:
 
-**Oprava:**
+**(a) Binární soubor frameworku chybí na PATH.** `npx` / `cypress` / `playwright` není nainstalovaný. Log ukazuje `tooling not found: [WinError 2]`.
+- Nainstalujte Node.js 18+ z nodejs.org → restartujte PowerShell → restartujte bouracka-ui.
+- Pro Cypress: z kořene repa: `npm install cypress --save-dev`
+- Pro Playwright: `npm install @playwright/test --save-dev; npx playwright install`
 
-1. Otevřete `/about` v UI a podívejte se na řádek **tools**. Cokoli červené (npx, python, consolidate_results) chybí.
-2. Pokud potřebujete reálný browser dispatch:
-   - **npx chybí** → nainstalujte Node.js 18+ z nodejs.org, restartujte PowerShell, restartujte bouracka-ui.
-   - **cypress chybí** → z kořene repa: `npm install cypress --save-dev`
-   - **playwright chybí** → `npm install @playwright/test --save-dev; npx playwright install`
-3. Pokud chcete jen demo UI bez reálných prohlížečů, přepněte do mock mode:
+**(b) pytest plugin chybí.** `pytest-json-report` není v venv. Log ukazuje `unrecognized arguments: --json-report`.
+- v0.1.0+ wheel auto-instaluje `pytest-json-report` jako runtime dependency. Pokud na to přesto narazíte, spusťte `pip install pytest-json-report` ve venv.
+
+**(c) Kořen repa špatně detekován.** bouracka-ui nemůže najít `tools/consolidate_results.py`. Log ukazuje cestu konsolidátoru uvnitř `.venv/` nebo jiného špatného adresáře.
+- v0.1.0+ wheel auto-detekuje kořen repa procházením nahoru z CWD a hledáním markeru `tools/consolidate_results.py`. Pokud detekce přesto selže, override přes env proměnnou:
 
    ```powershell
-   $env:BOURACKA_UI_DISPATCH_MODE = "mock"
+   $env:BOURACKA_UI_REPO_ROOT = "C:\Users\you\path\to\bouracka-tests"
    bouracka-ui
    ```
+
+**(d) Žádné test specy nevyhovují.** Vaše TC selekce produkuje glob, který se nerozpouští na žádné spec soubory na disku.
+- Ověřte, že `cypress/e2e/**/*<tc-token>*.cy.ts` (nebo ekvivalent pro playwright/selenium) skutečně existuje pro TC, který jste vybrali.
+
+**Univerzální fallback — mock mode** (pro demo / iteraci UI bez reálných prohlížečů):
+
+```powershell
+$env:BOURACKA_UI_DISPATCH_MODE = "mock"
+bouracka-ui
+```
+
+Otevřete `/about` v UI pro zobrazení dostupnosti nástrojů (npx / python / consolidate_results — všechny s green/red statusem).
 
 ---
 

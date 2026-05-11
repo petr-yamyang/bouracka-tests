@@ -83,21 +83,35 @@ If you have a build older than v0.1.0 and can't upgrade, the workaround is: wait
 
 **Symptom:** results page shows `dispatch failed — no envelope produced`. Or you see this with "Run not found" if you're on a v0.0.x build.
 
-**Why:** the dispatcher tried to launch Cypress / Playwright / Selenium but none of them are installed (no `npx` on PATH, etc.).
+The dispatch-failed view in v0.1.0+ now lists the four most common candidate causes inline; pick the one that matches your log:
 
-**Fix:**
+**(a) Framework binary missing on PATH.** `npx` / `cypress` / `playwright` not installed. Log shows `tooling not found: [WinError 2]`.
+- Install Node.js 18+ from nodejs.org → restart PowerShell → restart bouracka-ui.
+- For Cypress: from repo root: `npm install cypress --save-dev`
+- For Playwright: `npm install @playwright/test --save-dev; npx playwright install`
 
-1. Open `/about` in the UI and look at the **tools** row. Anything red (npx, python, consolidate_results) is missing.
-2. If you need real browser dispatch:
-   - **npx missing** → install Node.js 18+ from nodejs.org, restart PowerShell, restart bouracka-ui.
-   - **cypress missing** → from the repo root: `npm install cypress --save-dev`
-   - **playwright missing** → `npm install @playwright/test --save-dev; npx playwright install`
-3. If you just want to demo the UI without real browsers, switch to mock mode:
+**(b) pytest plugin missing.** `pytest-json-report` not in the venv. Log shows `unrecognized arguments: --json-report`.
+- v0.1.0+ wheel auto-installs `pytest-json-report` as a runtime dependency. If you somehow still hit this, run `pip install pytest-json-report` in the venv.
+
+**(c) Repo root mis-detected.** bouracka-ui can't locate `tools/consolidate_results.py`. Log shows the consolidator script path pointing inside `.venv/` or some other wrong directory.
+- v0.1.0+ wheel auto-detects the repo root by walking up from CWD looking for the `tools/consolidate_results.py` marker. If detection still fails, override via env var:
 
    ```powershell
-   $env:BOURACKA_UI_DISPATCH_MODE = "mock"
+   $env:BOURACKA_UI_REPO_ROOT = "C:\Users\you\path\to\bouracka-tests"
    bouracka-ui
    ```
+
+**(d) No test specs matched.** Your TC selection produces a glob that doesn't resolve to any spec files on disk.
+- Verify that `cypress/e2e/**/*<tc-token>*.cy.ts` (or the playwright/selenium equivalent) actually exists for the TC you selected.
+
+**Universal fallback — mock mode** (for demos / UI iteration without real browsers):
+
+```powershell
+$env:BOURACKA_UI_DISPATCH_MODE = "mock"
+bouracka-ui
+```
+
+Open `/about` in the UI to inspect tool availability (npx / python / consolidate_results all listed with green/red status).
 
 ---
 

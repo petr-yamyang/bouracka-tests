@@ -161,8 +161,16 @@ Dojdou ke mně (Pete) a budou zpracovány do dalšího vydání bouracka-ui.
 
 ---
 
-## §9. Historie verzí
+## §9. Poznámka k navigaci — tlačítko „Zpět" v aplikaci
 
-- **v0.1.0** (2026-05-10) — první vydání. Obsahuje opravu BUG-BUI-001 (Windows NTFS filename safety pro run_id) a opravu BUG-BUI-002 (202 in-flight sémantika + UI polling pro zabránění přechodným „Run not found" stránkám).
+Hlavička má tlačítko **← Back** vlevo od odkazů na stránky. Používá vlastní history stack SPA přes `window.history.back()`, což je předvídatelnější než šipka Back v prohlížeči s hash routingem. Preferujte tlačítko v aplikaci.
+
+## §10. Historie verzí
+
+- **v0.1.0** (2026-05-11) — první vydání. Obsahuje:
+  - BUG-BUI-001: Windows NTFS filename safety pro run_id
+  - BUG-BUI-002: 202 in-flight sémantika + UI polling (žádné přechodné „Run not found")
+  - BUG-BUI-003: Karta Provenance dynamicky přejmenovaná na „Live log" / „Dispatch log" podle stavu
+  - BUG-BUI-004: REPO_ROOT auto-detekce z CWD (opravuje wheel-install dispatch) + tlačítko Back v aplikaci + multi-cause zpráva dispatch-failed + `pytest-json-report` runtime dependency
 
 Konec OPERATOR-GUIDE-CS.md
