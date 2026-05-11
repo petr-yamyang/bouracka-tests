@@ -8,7 +8,8 @@
 |------|---------------|-----------------|
 | `INSTALL-HP-ELITE.txt` | Install steps from a fresh laptop to a working `bouracka-ui --help` | **first**, once per laptop |
 | `OPERATOR-GUIDE.md` | Day-to-day workflow: run tests, file bugs, export bundles | after first successful install |
-| `TROUBLESHOOTING.md` | Recipes for known failure modes (port in use, locked DLLs, drift, etc.) | when something breaks |
+| `TROUBLESHOOTING.md` | Recipes for known UI failure modes (port in use, locked DLLs, dispatch issues, etc.) | when the UI itself breaks |
+| `DIAGNOSTICS-PLAYBOOK.md` | What to check when the SYSTEM around the UI misbehaves: network reachability, integration mock-vs-live deltas, drift catalog, pre-flight TST checklist, DELTA-REPORT template for shipping findings back | for any "this isn't an obvious UI bug" moment |
 | `kill-stragglers.ps1` | Helper script: kills stuck servers + cleans pip orphans | when troubleshooting tells you to |
 | `SHA256SUMS.txt` | Checksums for integrity verification | optional, before install on security-sensitive machines |
 | `bouracka_ui-0.1.0-py3-none-any.whl` | The installable wheel | referenced by INSTALL-HP-ELITE.txt step 3 |

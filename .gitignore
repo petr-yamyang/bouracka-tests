@@ -74,6 +74,18 @@ BOURACKA-TESTPLAN-v0.4.1.xlsx
 # Sensitive — exclude from PUBLIC repo (move to mimt-internal private repo if needed)
 _install/INSTALL-PLAN-SUPNB-v0.1.md         # contains SUPNB001 hostname + petr.zemla user
 _install/SECOPS-COMPONENTS-CS.md             # ČKP SecOps audit doc — internal
+
+# SUPIN-internal diagnostics companion (populated copy — TEMPLATE is allowed)
+# The TEMPLATE has no SUPIN data and stays tracked at:
+#   _specs/SUPIN-INTERNAL-companion/DIAGNOSTICS-PLAYBOOK-SUPIN-INTERNAL-TEMPLATE.md
+# The POPULATED copy lives next to it (drop -TEMPLATE suffix) and MUST never commit.
+_specs/SUPIN-INTERNAL-companion/DIAGNOSTICS-PLAYBOOK-SUPIN-INTERNAL.md
+_specs/SUPIN-INTERNAL-companion/*.populated.md
+_specs/SUPIN-INTERNAL-companion/*-INTERNAL.md
+!_specs/SUPIN-INTERNAL-companion/*-INTERNAL-TEMPLATE.md
+# Defensive: also block any local-config files testers create
+_local-config.txt
+*-local-config.txt
 recon/raw/                                  # raw transcripts may contain unredacted operator data
 
 # Python build artefacts
