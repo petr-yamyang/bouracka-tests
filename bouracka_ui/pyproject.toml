@@ -53,6 +53,7 @@ Design = "file://_config/BOURACKA-UI-DESIGN-v0.1-2026-05-10.md"
 [tool.pytest.ini_options]
 markers = [
     "http_e2e: slow HTTP subprocess tests; skipped in default run",
+    "integration: integration tests requiring real workbook / network",
 ]
 
 [tool.setuptools]
@@ -64,3 +65,4 @@ include = ["bouracka_ui*"]
 
 [tool.setuptools.package-data]
 "bouracka_ui" = ["static/*.html", "static/*.js", "static/*.css"]
+
