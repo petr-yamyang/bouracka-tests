@@ -51,7 +51,7 @@ def test_health_returns_versions():
     assert r.status_code == 200
     j = r.json()
     assert j["schema_version"] == "1.0"
-    assert j["server_version"] == "0.1.0"
+    assert j["server_version"] == "0.1.5-dev2"
     assert "tools" in j
 
 
@@ -59,15 +59,33 @@ def test_health_returns_versions():
 # §3. /api/envs
 # ──────────────────────────────────────────────────────────────────────────
 
-def test_envs_returns_3_envs():
+def test_envs_returns_envs():
+    """As of v0.1.2 Kate drop, /api/envs returns 4 envs:
+      - ENV-PUB     (public production, https://www.bouracka.cz)
+      - ENV-TST     (SUPIN-internal TST, https://tst.bouracka.cz)
+      - ENV-DMO     (SUPIN-internal driving-school DEMO, tst.demo.bouracka.cz)
+                    — matches workbook v0.4.3 ENV-DMO row
+      - ENV-DMO-PUB (public DEMO, demo.bouracka.cz) — supplemental,
+                    auto-merged via workbook_io.SUPPLEMENTAL_ENVS
+    """
     r = client.get("/api/envs")
     assert r.status_code == 200
     j = r.json()
-    assert len(j) >= 3
+    assert len(j) >= 4
     codes = {e["code"] for e in j}
-    assert {"ENV-PUB", "ENV-TST", "ENV-DMO"} <= codes
+    assert {"ENV-PUB", "ENV-TST", "ENV-DMO", "ENV-DMO-PUB"} <= codes
     schema_envs = {e["schema_env"] for e in j}
-    assert schema_envs <= {"demo", "tst", "uat", "prod-readonly", "prod-writable"}
+    assert schema_envs <= {"demo", "tst-demo", "tst", "uat",
+                            "prod-readonly", "prod-writable"}
+    # SUPIN-internal DEMO (workbook ENV-DMO) must resolve to tst-demo schema
+    env_dmo = next((e for e in j if e["code"] == "ENV-DMO"), None)
+    assert env_dmo is not None
+    assert env_dmo["schema_env"] == "tst-demo"
+    # Public DEMO supplemental must resolve to demo schema + correct URL
+    env_dmo_pub = next((e for e in j if e["code"] == "ENV-DMO-PUB"), None)
+    assert env_dmo_pub is not None
+    assert env_dmo_pub["schema_env"] == "demo"
+    assert env_dmo_pub["base_url"] == "https://demo.bouracka.cz"
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -95,12 +113,26 @@ def test_tcs_filtered_by_env_demo():
 
 
 def test_tcs_filtered_by_framework():
+    """BUG-K-001 fix (2026-05-13): the filter is now tolerant of empty
+    framework_targets cells in the live workbook (e.g., TC-CP-NEW-* rows
+    don't carry a framework_targets value after KP review). Empty cell is
+    treated as 'applies to all frameworks' and the row is returned. The
+    test assertion mirrors that contract: a returned row must EITHER
+    contain the filtered framework in its targets, OR have empty targets.
+    """
     r = client.get("/api/tcs?framework=cypress")
     assert r.status_code == 200
     j = r.json()
     for tc in j:
         targets = (tc.get("framework_targets") or "").lower()
-        assert "cypress" in targets, f"{tc['code']}: framework_targets={targets}"
+        if targets:
+            # Populated cell: cypress must be in the comma-separated set
+            target_set = {t.strip() for t in targets.split(",") if t.strip()}
+            assert "cypress" in target_set, (
+                f"{tc['code']}: framework_targets={targets} "
+                f"(populated but missing 'cypress' — filter regression)"
+            )
+        # else: empty → assumed-applies-to-all per BUG-K-001 defensive filter
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -222,7 +254,7 @@ def test_resolve_repo_root_finds_marker_from_cwd(tmp_path, monkeypatch):
 def test_resolve_repo_root_finds_workbook_marker(tmp_path, monkeypatch):
     """BUG-BUI-004: BOURACKA-TESTPLAN-*.xlsx in CWD also counts as a marker."""
     import bouracka_ui.server as srv
-    (tmp_path / "BOURACKA-TESTPLAN-v0.4.2.xlsx").write_text("fake")
+    (tmp_path / "BOURACKA-TESTPLAN-v0.4.4.xlsx").write_text("fake")
     monkeypatch.delenv("BOURACKA_UI_REPO_ROOT", raising=False)
     monkeypatch.chdir(tmp_path)
     result = srv._resolve_repo_root()

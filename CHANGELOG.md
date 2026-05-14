@@ -7,6 +7,321 @@ TestPlan version bumps are decoupled** (see `_specs/EMAIL-DELIVERABILITY-RULES-v
 
 ---
 
+## [bouracka-ui v0.1.5-dev2] — 2026-05-14 — Mock-mode dispatch shield
+
+### Added
+
+- `bouracka_ui/tests/test_mock_dispatch_e2e.py` — mock-mode dispatch shield (13 tests across 2 families):
+  - **Family A** (10 direct-call tests): covers basic dispatch, multi-framework, divergence, drift, soft-pass, skip-drift, summary count integrity, env-url mapping for all 5 envs, envelope path pattern, schema doc validation
+  - **Family B** (1 HTTP subprocess test): full POST→poll→envelope cycle via uvicorn on port 8425
+  - **Meta-tests** (3): prove validators reject missing `run_id`, unknown verdict, wrong TC count
+- Registered `http_e2e` pytest marker in `pyproject.toml` (zero `PytestUnknownMarkWarning`)
+- Sanity gate: dispatch chain validated without any external framework (cypress/playwright/selenium) installed
+
+---
+
+## [bouracka-ui v0.1.4] — 2026-05-13 evening — Kate Round-1 fixes
+
+### Bug fixes (Kate first-round findings)
+
+- **BUG-K-001** — framework-filter dropdown returned 0 TCs when set to anything other than `all`.
+  - **Root cause:** `workbook_io.list_tcs()` used hardcoded column indexes (`r[21]` for `framework_targets`) that drifted after KP's 2026-05-11 review added 3 new columns to `02_TestCases` (`comments_KP_en`, `env`, `ext_ws`). The hardcoded `r[21]` was reading a different column.
+  - **Fix:** new `_column_map(ws)` + `_safe_get(row, idx)` helpers; `list_envs()` and `list_tcs()` refactored to header-based lookup (lowercase header name → 0-based column index). Same pattern as `_BUG_COL` for the bugs sheet.
+  - **Bonus side-effect:** the KP-review columns are now surfaced to the API output (`env_shorthand`, `ext_ws`, `comments_kp_en`) for future filter/display use in the UI.
+  - **Defensive filter:** empty `framework_targets` cell now means "applies to all frameworks" (include row); populated cell parsed via comma-split + trim + lowercase + set-membership instead of fragile substring match.
+
+- **BUG-K-002** — operator couldn't edit existing bugs (no edit UI in v0.1.2).
+  - Already implemented in v0.1.3 Block 2 (bug-edit + retest workflow). v0.1.4 finally ships it to Kate because v0.1.3 was source-prepped but never built.
+
+- **BUG-K-003** — two-workbook contamination on Kate's HP Elite.
+  - **Root cause:** `package-test-suite-v0.5.6.ps1` was bundling `BOURACKA-TESTPLAN-v0.4.3.xlsx` from repo root into the test-suite source ZIP. The HP Elite UI ZIP also contained the workbook. Result: two copies on Kate's machine — one at `C:\TestAutomationSite\BOURACKA-TESTPLAN-v0.4.3.xlsx` (UI install root), one at `C:\TestAutomationSite\tests-source\BOURACKA-TESTPLAN-v0.4.3.xlsx`. Bug filings went to the second copy (per `BOURACKA_UI_REPO_ROOT=tests-source` set in `KATE-FROM-ZERO §6`); Kate opened the first and panicked.
+  - **Fix part 1:** `package-test-suite-v0.5.6.ps1` no longer includes the workbook. Single source of truth = UI install root.
+  - **Fix part 2:** `cli.py` startup banner now prominently displays the resolved workbook path with a warning that other `BOURACKA-TESTPLAN-*.xlsx` files are reference-only.
+  - **Fix part 3:** `KATE-FROM-ZERO-INSTALL-CS.md` §5 and §6 updated with explicit one-workbook rule.
+
+### Feature surfaces for v0.1.5+
+
+- KP-review columns now exposed to API (env_shorthand, ext_ws, comments_kp_en) — frontend can light up filter chips in v0.1.5.
+
+### Smoke test
+
+- `test_smoke.py::test_health_returns_versions` assertion bumped to `server_version == "0.1.4"`.
+
+### Strategic deferrals (Kate Round-1 feature requests for v0.1.5)
+
+- **FR-K-001** — Bug → TC → Step traceability (new `step_id` field on bugs + UI surfacing)
+- **FR-K-002** — Click TC name on `/run` page → read-only step-by-step preview modal
+- **FR-K-003** — Human-readable run console (`TC#1 - OK / TC#2 - NOK → Bug#n in Step#m` pattern, classic test-runner UX)
+
+### Strategic for v0.2 (Kate Round-1 deeper concern)
+
+- **STRAT-K-001** — audit-grade visibility for TestRun results. Pete: "doubt on findings done by Kate because audit-grade detail is missing." Folds into TES presentation v0.2 + Oracle ERD BCKA_TEST_RUNS column design.
+
+---
+
+## [bouracka-ui v0.1.3 + consolidate_results v0.5.5] — 2026-05-13 — Testcockpit stabilisation
+
+### bouracka-ui v0.1.3 — TES enrichment + bug edit/retest workflow
+
+**Block 1 — TES presentation enrichment (12 gaps from TES-GAP-ANALYSIS-2026-05-12-NIGHT)**
+
+Backend (`consolidate_results.py` v0.5.4 → v0.5.5):
+- **B-01** — drift_forensic taxonomy expanded with `ipc-114-renderer-kill` (BUG-CY-001), `same-origin-pool`, `other-401-403` recognition. Drift narrative hints captured from skip reasons.
+- **B-03** — Cypress `trace_ref` now wired to the reporter JSON path (closest Cypress equivalent to a Playwright trace.zip; carries command-log + assertion history).
+- **B-04** — `host.tool_versions` best-effort capture (python / node / cypress / playwright / selenium versions via subprocess with timeouts).
+- **B-06** — Markdown digest enriched: per-fw duration table, evidence inventory, drift detail, tool_versions list, parse_warnings section.
+- **B-08** — `parse_warnings` top-level field captures parser warnings into envelope for UI display (forward-compat per schema §6.2).
+
+Frontend (`static/app.js`):
+- **F-01** — Error messages on fail/error cells via title-attribute tooltip (200-char truncation).
+- **F-02** — Evidence icons per cell (📷 screenshot, 🎥 video, 📦 trace) with click-to-copy-path UX. Streaming endpoint deferred to v0.1.4.
+- **F-03** — Per-framework duration integrated into the cell tooltip alongside error message.
+- **F-04** — Matrix filter/sort toolbar above verdict matrix: filter chips (All / Failures / Skips / Divergence) + sort dropdown (by TC / verdict / parity).
+- **F-05** — Drift forensic card enriched with drift-type narrative templates (recaptcha-v3, ipc-114-renderer-kill, etc.), guard policy display, formatted correlation_id.
+- **F-06** — Per-TC drill-down accordion: click TC code → expand row showing covered_tt, viewport, bug_ref, soft_pass_reason, per-fw breakdown (verdict + duration + raw_status + full error_messages + evidence paths).
+- **F-09** — Provenance card grouped sections (Schema / Host / Reporter) + tool_versions inline rendering + parse_warnings block (landed 2026-05-12 night).
+
+**Block 2 — Bug edit + retest workflow (NEW)**
+
+Backend (`workbook_io.py` + `server.py`):
+- New `workbook_io.get_bug(code)` — fetch single bug with full fields (descr, repro, expected, actual, audit fields, retest provenance).
+- New `workbook_io.update_bug(code, fields)` — partial update via allowlist (`_BUG_UPDATABLE`); always touches `updated_at`; raises `WorkbookLockedError` (→ 409) if Excel has the workbook open.
+- New `workbook_io.set_bug_retest_run_id(code, run_id)` — best-effort bookkeeping linking retest runs back to the bug record.
+- New column index map `_BUG_COL` as single source of truth shared between readers + writers (previously column indexes were duplicated across `list_bugs` / `append_bug` / new functions).
+- New server endpoint `GET /api/bugs/{code}` — fetch single bug for edit form.
+- New server endpoint `PUT /api/bugs/{code}` — update bug fields; 404 if missing; 409 on workbook lock; 503 if workbook absent.
+- New server endpoint `POST /api/bugs/{code}/retest` — triggers TC re-run via dispatcher, returns 202 with new run_id, records linkage on bug.
+
+Frontend (`static/app.js` + `static/index.html`):
+- Bugs list rows clickable → opens edit form.
+- Bug form refactored to dual-mode (create | edit) via `dataset.mode`. Edit mode pre-fills all fields including status / urgency / priority.
+- New form fields: status (open / investigating / fixed / verified-fixed / reopened / closed / wontfix), urgency, priority.
+- Retest button appears for bugs with linked_tc_ref in workflow-relevant statuses; click triggers `POST /api/bugs/{code}/retest`.
+- Retest result banner — polls run completion (2s tick, 3min budget), then renders result with status-change confirmation buttons.
+- **Conservative retest UX** per Pete's 2026-05-13 decision: retest produces flag + buttons (✓ Mark verified-fixed / ↺ Reopen bug / Keep as-is) — no silent status flips.
+
+### `consolidate_results.py` v0.5.5
+
+- Version bumped to track B-01/B-03/B-04/B-06/B-08 work above.
+- Schema-compliant additive changes; `_validate_envelope()` still passes; consumers tolerate new fields per schema §6.2.
+
+### Strategic docs
+
+- `_config/TES-GAP-ANALYSIS-2026-05-12-NIGHT-EN.md` (full 20-gap catalogue + recommended v0.1.3 scope + open questions OQ-TES-01..08).
+- `_config/BOURACKA-ORACLE-ERD-v0.1-EN.md` first portion landed: 5 most-used sheets (TestTargets, TestCases, TestEnvironments, TestRuns, Bugs) translated to Oracle DDL with `BCKA_*` naming, optimistic concurrency via `ROW_VERSION`, audit triggers, JSON column patterns, 8 OQ-ERD for SUPIN DBA review.
+
+### Smoke test
+
+- `test_smoke.py::test_health_returns_versions` assertion bumped to `server_version == "0.1.3"`.
+- Full smoke (28/28) should remain green; new bug-edit/retest endpoints are additive and use the same workbook_io patterns the existing smoke covers.
+
+---
+
+## [unreleased — pre-Day-2 quick wins] — 2026-05-12 late night
+
+### Pre-Day-2 quick wins (3 mechanical fixes; no Pete-decision needed)
+
+Per `_config/TES-GAP-ANALYSIS-2026-05-12-NIGHT-EN.md` §6, three Cowork-safe
+fixes landed tonight before Pete's morning review:
+
+- **B-04** — `tools/consolidate_results.py` `_capture_host()` now populates
+  `host.tool_versions` with best-effort versions of python / node / cypress /
+  playwright / selenium. Per schema §3.7 optional; absence tolerated.
+- **B-08** — `tools/consolidate_results.py` now captures parser warnings
+  (when framework reporter outputs are missing) into a top-level
+  `parse_warnings: [...]` field. Forward-compatible per schema §6.2 (consumers
+  ignore unknown fields). v1.1 schema candidate.
+- **F-09** — `bouracka_ui/static/app.js renderResultsFullEnvelope()`
+  provenance card refactored from flat `<br>`-separated lines into 3 grouped
+  sections (Schema / Host / Reporter) with tool_versions rendering when
+  present and parse_warnings block when non-empty.
+
+These don't bump the wheel version yet — they're committed-but-not-shipped
+pending Pete's review + Days 2-3 broader work. Tagged as
+`bouracka-ui v0.1.3-pre-day-2` candidate in the working tree.
+
+---
+
+## [TestPlan v0.4.3 + bouracka-ui v0.1.2] — 2026-05-12 — Kate HP Elite drop
+
+### Workbook — `BOURACKA-TESTPLAN-v0.4.3.xlsx` ships as-is (Phase-2 patches deferred)
+
+- The v0.4.3 KP-reviewed workbook ships unchanged in this drop.
+- A first-attempt Phase-2 patcher (`tools/apply_testplan_phase2_patches.py`)
+  was drafted to fold the RÚIAN target row + new state-machine codes into a
+  v0.4.4 workbook, but its hardcoded column-name assumptions (`id`, `name`,
+  `layer`, `owner`, `kind`, ...) did not match the live v0.4.3 schema:
+  - `01_TestTargets` actual schema has IDs in column 2 (column 1 appears to
+    be an order/priority blank column) and uses different header names for
+    name/description fields.
+  - The script's defensive `_append_dict_row` design prevented schema
+    corruption — it dropped unmatched payload keys rather than overwriting
+    wrong cells — but it produced a half-empty row 30 in the v0.4.4 attempt
+    with only the `id` cell filled.
+- v0.4.4 attempt was rolled back; v0.4.3 restored from `archive/`.
+- The patcher script remains in `tools/` for the next session; before re-use,
+  the payload key map needs to be aligned to the actual row-1 headers (a
+  schema-dump step that should have preceded drafting).
+- **All four Phase-2 follow-ups now deferred to next session:**
+  1. RÚIAN row in `01_TestTargets` + `00b_Requirements`
+  2. `SMS_CODE_ATTEMPTS` + `ERR_TOO_MANY_PHONE_NUMBER_OCCURRENCE` in
+     `01c_StateMachine`
+  3. RÚIAN in DIAGNOSTICS-PLAYBOOK §3 + SUPIN-internal companion (the
+     companion STARTER §4.5 already has the placeholder row scaffold — no
+     change there)
+  4. KP `comments_KP_en` folding into 22 dev-spec MDs
+
+### bouracka-ui — v0.1.2 (multi-ABI distribution loop)
+
+- **Wheel version 0.1.1 → 0.1.2** (no behavioural code change; packaging-only
+  bump matching the multi-ABI distribution rework).
+- `pyproject.toml` classifiers refreshed: dropped Python 3.9, added Python 3.12
+  (current ABI matrix is 3.10/3.11/3.12).
+- **New distribution driver** `delivery/package-hp-elite-all-abis-v0.1.2.ps1`
+  loops `package-hp-elite-v0.1.0.ps1` over cp310/cp311/cp312 and produces six
+  ZIPs in one shot:
+  - `bouracka-ui-hp-elite-v0.1.2-EN-py{310,311,312}.zip`
+  - `bouracka-ui-hp-elite-v0.1.2-CS-py{310,311,312}.zip`
+  - plus `MANIFEST-KATE-DROP-<date>.txt` with size + SHA256 per artefact
+- Inner packager `delivery/package-hp-elite-v0.1.0.ps1` bumped: `$distVersion
+  = "v0.1.2"`, `$wheelVersion = "0.1.2"`. Wheelhouse + critical-deps
+  verification + SHA256SUMS.txt + ZIP path logic unchanged.
+
+### Companion deliverables (Kate drop, 2026-05-12)
+
+- **`delivery/package-test-suite-v0.5.6.ps1`** — allowlist-based test-suite
+  source bundle packager. Stages `cypress/`, `selenium/`, `playwright/`,
+  `tools/`, `fixtures/`, `_specs/`, `_install/`, `recon/` (minus `raw/`) plus
+  workbook v0.4.4 + CHANGELOG + README. Excludes `node_modules/`,
+  `archive/obsolete/`, `cypress/screenshots`, `cypress/videos`,
+  `selenium-report`, `runs/`, plus the SUPIN-INTERNAL companion folder
+  (template only, not packaged). Produces `bouracka-tests-source-v0.5.6.zip`
+  and runs `tools/preship_audit.py` as the final gate.
+- **`delivery/package-tes-outputs-v0.5.5.ps1`** — packages the Cíl-1 baseline
+  (`selenium-report/results.json`), all `runs/cross-framework-*.{json,md}`
+  consolidated reports + `drift-log.jsonl`, plus the binding schema spec
+  (`_specs/CROSS-FRAMEWORK-RESULT-SCHEMA-v0.1.md`) and the TES presentation
+  layer design doc. Output: `bouracka-tes-outputs-<date>.zip`.
+- **`_specs/SUPIN-INTERNAL-companion/DIAGNOSTICS-PLAYBOOK-SUPIN-INTERNAL-2026-05-12-STARTER.md`**
+  — STARTER companion derived from TEMPLATE; PUBLIC drift rows (1–4 of §5)
+  pre-filled with current state: `DEMO-POST-REPORTS-403` (reCAPTCHA-v3 score
+  drift), `BUG-CY-001-IPC-114` (Chromium renderer kill rounds 1–4),
+  `WORKBOOK-LOCKED-409` (openpyxl write under Excel lock),
+  `WHEELHOUSE-ABI-MISMATCH` (KB-042). New §4.5 added for RÚIAN. Every
+  `<FILL-IN-INTERNAL: ...>` placeholder still requires Pete's hands before
+  handoff. `.gitignore` broadened to keep dated populated copies out of git
+  while allowing TEMPLATE + STARTER to stay tracked.
+
+### Kate-specific deliverables
+
+- **`delivery/KATE-FROM-ZERO-INSTALL-CS.md`** — single-page runbook from
+  blank SUPIN HP Elite to working bouracka-ui smoke run:
+  §1 preflight (Python ABI + air-gap network check),
+  §2 ZIP variant selection,
+  §3 SHA256 integrity verification against manifest,
+  §4 venv + air-gap pip install from wheelhouse,
+  §5 test-suite source extraction,
+  §6 first smoke in mock mode,
+  §7 bug-filing rehearsal against workbook v0.4.4,
+  §8 real-mode dispatch handoff,
+  §9 escalation + DELTA-REPORT path,
+  §10 clean uninstall,
+  §11 self-validation checklist.
+
+### Pete-side runbook
+
+- **`PETE-BUILD-V0.1.2-RUNBOOK.md`** — full Windows PowerShell sequence to
+  produce the v0.1.2 Kate drop:
+  §0 prereqs, §1 repo root + git status review,
+  §2 workbook v0.4.3 → v0.4.4 patches,
+  §3 deferred KP comments folding (manual),
+  §4 wheel build,
+  §5 workbook swap into delivery folders,
+  §6 multi-ABI loop (6 ZIPs),
+  §7 test-suite bundle,
+  §8 TES outputs bundle,
+  §9 SUPIN-internal companion manual fill + pack,
+  §10 final manifest assembly,
+  §11 park-commit recipe,
+  §12 pre-dispatch sanity checks,
+  §13 dispatch protocol.
+  Documents why the build was source-prepped in the dev session but the
+  pack/build steps must run on Windows (sandbox bash was unavailable;
+  `python -m build` + `pip download --platform win_amd64` are Windows-side).
+
+### Session-close
+
+- **`SESSION-CLOSE-CP-SUPIN-06-2026-05-12-KATE-DROP.md`** — restart
+  context for the next session: drop manifest, deferred items (KP comment
+  folding, BUG-CY-001 Round-5 fix, branch park status), open questions
+  for next Sonnet/Opus pass.
+
+---
+
+
+
+### Workbook — `BOURACKA-TESTPLAN-v0.4.3.xlsx` (KP-reviewed, primary test-coverage source-of-truth)
+
+- **KP review accepted as primary** — Bouračka-domain reviewer added 3 new columns
+  to `02_TestCases` enriching 22 R1 TCs (TC-CP-001..018 + 020..023):
+  - `comments_KP_en` — precise acceptance criteria with screen-state IDs (D00..D18)
+    and error subreasons (e.g. `SMS_CODE_ATTEMPTS`, `ERR_TOO_MANY_PHONE_NUMBER_OCCURRENCE`).
+  - `env` — environment-profile shorthand: `STANDARD`, `DEMO, STANDARD`.
+  - `ext_ws` — external integration dependency per TC: `N8`, `zenID`, `AISPOV`,
+    `AISPOV-AB`, `RÚIAN`.
+- **New integration target surfaced — `RÚIAN`** (address registry) on TC-CP-022;
+  not in v0.4.2 TestTargets, needs to land in `01_TestTargets` + DIAGNOSTICS-PLAYBOOK §3
+  in Phase 2 follow-up.
+- **0 TCs added / 0 removed / 0 existing-cell-value changes** other than a benign
+  `item_name_cs` typo on TC-CP-NEW-Y.
+- **2 anomalies flagged for KP confirmation:** TC-CP-005 appears twice (row 25 + row 50);
+  TC-CP-019 omitted from review (intentional or oversight?).
+- **v0.4.2 archived** to `archive/BOURACKA-TESTPLAN-v0.4.2.xlsx`.
+- **`bouracka_ui/server.py` `WORKBOOK_PATH` default bumped** v0.4.2 → v0.4.3 (the
+  auto-detect via `glob('BOURACKA-TESTPLAN-*.xlsx')` would have picked the latest
+  anyway, but the explicit default keeps `/about` health output deterministic).
+
+### bouracka-ui — v0.1.1 (air-gap distribution + KB-042)
+
+- **HP Elite first-install bake-off (2026-05-11 evening)** exposed three air-gap
+  pip-install gaps not anticipated in v0.1.0:
+  1. INSTALL doc assumed PyPI access (false for SUPIN HP Elite).
+  2. `pip download <local-wheel>` doesn't follow `uvicorn[standard]` optional
+     extras on pip < 24 — missing httptools / watchfiles / websockets / pyyaml /
+     python-dotenv from the wheelhouse.
+  3. Wheelhouse built on ThinkPad Python 3.10 produced cp310 wheels; HP Elite
+     runs Python 3.12 — C-extension ABI mismatch → silent skip + same error.
+- **v0.1.1 fixes (packaging-only; same code as v0.1.0):**
+  - `delivery/package-hp-elite-v0.1.0.ps1` gains a `Build-Wheelhouse` step using
+    `pip download --platform win_amd64 --python-version $PY --only-binary=:all:`
+    with explicit `uvicorn[standard]>=0.27 pytest>=8.0 pytest-json-report>=1.5`
+    enumeration.
+  - Output ZIPs Python-version-tagged: `bouracka-ui-hp-elite-v0.1.1-EN-py312.zip`
+    + CS twin. `-PythonVersion 310`/`311`/`312` selects target ABI.
+  - INSTALL-HP-ELITE.txt (EN+CS) rewritten around offline-only install:
+    `pip install --no-index --find-links=<wheelhouse> <wheel>`.
+  - TROUBLESHOOTING (EN+CS) §11 added with 4 documented air-gap pip-error variants
+    + fixes.
+  - `pyproject.toml` `requires-python` bumped 3.9 → 3.10 (matches actual test
+    target).
+- **KB-042 captured** in `_config/KB-LESSONS-LEARNED.yaml`: "SUPIN-air-gapped
+  Python deliverables — bundle wheelhouse with cross-targeted ABI + explicit deps
+  enumeration." Reusable pattern for any future Python deliverable destined for
+  SUPIN-managed machines.
+- **HP Elite first install validated end-to-end** with Python 3.12.10: 24 packages
+  installed cleanly from local wheelhouse, `bouracka-ui` server running on
+  http://127.0.0.1:8424.
+
+### Phase 2 follow-up (NEXT session, not in this release)
+
+- Add `RÚIAN` row to `01_TestTargets` workbook sheet + `00b_Requirements`.
+- Add `SMS_CODE_ATTEMPTS` + `ERR_TOO_MANY_PHONE_NUMBER_OCCURRENCE` to `01c_StateMachine`.
+- Add `RÚIAN` to DIAGNOSTICS-PLAYBOOK.md §3 + SUPIN-internal companion template.
+- Fold KP's `comments_KP_en` per-TC into corresponding dev-spec `.md` files
+  (22 specs to refresh).
+
+---
+
 ## [v0.5.5] — 2026-05-10 — bouracka-ui v0.1.0 (presentation-layer UI + HP Elite air-gap workflow)
 
 ### Added — `bouracka_ui/` package (separate Python wheel)

@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bouracka-ui"
-version = "0.1.0"
+version = "0.1.5.dev2"
 description = "Local presentation-layer UI for Bouračka test suite — pick env, select tests, run, view results, file bugs (JIRA-style). Forerunner of MI-M-T UI."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { text = "Proprietary — internal SUPIN/Bouračka delivery" }
 authors = [
     { name = "Petr Zemla", email = "petr.yamyang@gmail.com" },
@@ -20,9 +20,9 @@ classifiers = [
     "Intended Audience :: Information Technology",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Quality Assurance",
     "Topic :: Software Development :: Testing",
 ]
@@ -49,6 +49,11 @@ bouracka-ui = "bouracka_ui.cli:main"
 [project.urls]
 Homepage = "https://github.com/petr-yamyang/bouracka-tests"
 Design = "file://_config/BOURACKA-UI-DESIGN-v0.1-2026-05-10.md"
+
+[tool.pytest.ini_options]
+markers = [
+    "http_e2e: slow HTTP subprocess tests; skipped in default run",
+]
 
 [tool.setuptools]
 package-dir = { "" = "." }
