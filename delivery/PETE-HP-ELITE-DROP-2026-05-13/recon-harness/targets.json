@@ -1,0 +1,108 @@
+{
+  "_meta": {
+    "schema_version": "1.1",
+    "source": "INT-001..INT-011 recon docs; SUPIN integration surface catalog",
+    "note": "v1.1 — added probe_types per target + 7 new internet targets from INT-001/006/007/008/009. INT-002/003/004/005 pending endpoint URLs from Michal Ciberej.",
+    "owner": "Pete Y. / Claude (2026-05-15)",
+    "last_updated": "2026-05-15"
+  },
+  "targets": [
+    {
+      "target_id": "D8WS-STD",
+      "url": "http://172.16.1.13:3031/sedn-ws-d8-2025_08/",
+      "expected_role": "STD (production)",
+      "expected_service": "D8WS (outbound write into SEDN)",
+      "probe_types": ["tcp_connect", "http_head", "wsdl_get", "soap_fault_elicit"],
+      "notes": "Per INT-010 §2 — production endpoint."
+    },
+    {
+      "target_id": "D8WS-TST",
+      "url": "http://172.16.1.13:3030/sedn-ws-d8-2025_08/",
+      "expected_role": "TST (testing)",
+      "expected_service": "D8WS (outbound write into SEDN)",
+      "probe_types": ["tcp_connect", "http_head", "wsdl_get", "soap_fault_elicit"],
+      "notes": "Per INT-010 §2 — test endpoint."
+    },
+    {
+      "target_id": "D5WS-STD",
+      "url": "http://172.16.1.13:3030/sedn-ws-d5-2025_08/",
+      "expected_role": "STD (production)",
+      "expected_service": "D5WS (read path from SEDN)",
+      "probe_types": ["tcp_connect", "http_head", "wsdl_get", "soap_fault_elicit"],
+      "notes": "Per INT-011 §2 — production endpoint. NOTE: sibling-inverted port vs D8WS-STD."
+    },
+    {
+      "target_id": "D5WS-TST",
+      "url": "http://172.16.1.13:3031/sedn-ws-d5-2025_08/",
+      "expected_role": "TST (testing)",
+      "expected_service": "D5WS (read path from SEDN)",
+      "probe_types": ["tcp_connect", "http_head", "wsdl_get", "soap_fault_elicit"],
+      "notes": "Per INT-011 §2 — test endpoint. NOTE: sibling-inverted port vs D8WS-TST."
+    },
+    {
+      "target_id": "INT-001-reCAPTCHA-api-js",
+      "url": "https://www.google.com/recaptcha/api.js",
+      "expected_role": "STD (production)",
+      "expected_service": "Google reCAPTCHA script load",
+      "probe_types": ["tcp_connect", "https_tls_verify", "http_head"],
+      "notes": "Per INT-001 — Bouračka registers reCAPTCHA via api.js; expect 200 + JS content."
+    },
+    {
+      "target_id": "INT-001-reCAPTCHA-siteverify",
+      "url": "https://www.google.com/recaptcha/api/siteverify",
+      "expected_role": "STD (production)",
+      "expected_service": "reCAPTCHA server-side verification",
+      "probe_types": ["tcp_connect", "https_tls_verify"],
+      "notes": "POST-only endpoint; HEAD likely 405. TLS handshake is the meaningful probe."
+    },
+    {
+      "target_id": "INT-006-Azure-outage-feed",
+      "url": "https://bourackaodstavky78861.z6.web.core.windows.net/odstavky.json",
+      "expected_role": "STD (production)",
+      "expected_service": "Azure SWA outage announcements JSON feed",
+      "probe_types": ["tcp_connect", "https_tls_verify", "http_get_json"],
+      "expect_json_keys": ["outages"],
+      "notes": "Per INT-006 — must return JSON; Bouračka polls this for outage banner."
+    },
+    {
+      "target_id": "INT-007-gmaps-js",
+      "url": "https://maps.googleapis.com/maps-api-v3/api/js/64/11d/intl/en_gb/common.js",
+      "expected_role": "STD (production)",
+      "expected_service": "Google Maps JavaScript API bundle",
+      "probe_types": ["tcp_connect", "https_tls_verify", "http_head"],
+      "notes": "Per INT-007 — versioned bundle URL; 200 expected. Maps API key observed in production. URL may rotate — 404 is non-fatal."
+    },
+    {
+      "target_id": "INT-008-internal-api-reports",
+      "url": "https://demo.bouracka.cz/api/health",
+      "expected_role": "STD (DEMO tier)",
+      "expected_service": "Internal /api REST surface — public DEMO",
+      "probe_types": ["tcp_connect", "https_tls_verify", "http_head"],
+      "notes": "Per INT-008 — Bouračka's own /api/. health endpoint; if 404, try /api/reports."
+    },
+    {
+      "target_id": "INT-009-RUIAN-suggest",
+      "url": "https://ags.cuzk.cz/arcgis/rest/services/RUIAN/MapServer/exts/GeocodeSOE/tables/1/suggest?text=Praha&f=json",
+      "expected_role": "STD (production)",
+      "expected_service": "ČÚZK RÚIAN address autocomplete",
+      "probe_types": ["tcp_connect", "https_tls_verify", "http_get_json"],
+      "expect_json_keys": ["suggestions"],
+      "notes": "Per INT-009 — autocomplete with sample query 'Praha'; should return suggestions array. Single call only — no retry (rate limits)."
+    },
+    {
+      "target_id": "INT-009-RUIAN-vyhledavaci",
+      "url": "https://ags.cuzk.cz/arcgis/rest/services/RUIAN/Vyhledavaci_sluzba_nad_daty_RUIAN/MapServer/1/query?where=1%3D1&outFields=*&f=json&resultRecordCount=1",
+      "expected_role": "STD (production)",
+      "expected_service": "ČÚZK RÚIAN address full-resolution query",
+      "probe_types": ["tcp_connect", "https_tls_verify", "http_get_json"],
+      "expect_json_keys": ["features"],
+      "notes": "Per INT-009 — record-count limited to 1 to avoid heavy query. Single call only — no retry."
+    }
+  ],
+  "future_targets_pending_endpoints": [
+    "INT-002 SMS gateway — endpoint URL not yet documented; Michal Ciberej follow-up",
+    "INT-003 SMTP — gateway URL not yet documented",
+    "INT-004 Vehicle/driver registry (AISPOV) — endpoint URL not yet documented; same SUPIN-internal network as D8WS",
+    "INT-005 Maps/geocoder for accident location — endpoint URL not yet documented (may overlap INT-007/INT-009)"
+  ]
+}
