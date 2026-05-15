@@ -29,12 +29,56 @@ RUN_ID_RE = re.compile(r"^run-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z-[0-9a-f]{7}$"
 # fine with either; we pick filename-safe format for cross-platform parity.
 
 # Per the workbook ENV-* codes per §4.1 of the UI design doc.
+# 2026-05-12 (Kate drop): added 'tst-demo' for SUPIN-internal driving-school
+# DEMO at tst.demo.bouracka.cz — was previously colliding with 'demo' under
+# the ambiguous ENV-DMO workbook code. See workbook_io.ENV_CODE_TO_SCHEMA.
 ENV_TO_BASE_URL = {
-    "demo":          "https://demo.bouracka.cz",
-    "tst":           "https://tst.bouracka.cz",
+    "demo":          "https://demo.bouracka.cz",       # public DEMO, no SUPIN reach needed
+    "tst-demo":      "https://tst.demo.bouracka.cz",   # SUPIN-internal DEMO (driving school)
+    "tst":           "https://tst.bouracka.cz",        # SUPIN-internal TEST
     "uat":           "https://uat.bouracka.cz",
     "prod-readonly": "https://www.bouracka.cz",
 }
+
+# BUG-K-010: consolidate_results.py --env only accepts tier names (demo/tst/uat/…).
+# UI labels like 'tst-demo' are compound (tier + sub-env); map them to tier before
+# passing --env. The full URL is already carried by --env-url.
+UI_ENV_TO_CONSOLIDATOR_TIER = {
+    "demo":           "demo",
+    "tst-demo":       "demo",          # sub-env of demo tier
+    "tst":            "tst",
+    "uat":            "uat",
+    "prod-readonly":  "prod-readonly",
+    "prod-writable":  "prod-writable",  # future; consolidator already accepts it
+}
+
+
+def normalize_env_for_consolidator(ui_env: str) -> str:
+    """UI env label → consolidator --env tier name. Raises ValueError on unknown."""
+    if ui_env not in UI_ENV_TO_CONSOLIDATOR_TIER:
+        raise ValueError(f"unknown UI env label: {ui_env!r}")
+    return UI_ENV_TO_CONSOLIDATOR_TIER[ui_env]
+
+
+def _build_env_inject(fw: str, env: str, base_url: str) -> dict[str, str]:
+    """Build the env-var injection map for a framework subprocess.
+
+    Without this, child processes read stale defaults at module import time:
+      - Cypress reads BOURACKA_ENV at cypress.config.ts load
+      - Selenium reads BOURACKA_BASE at conftest.py module import
+      - Playwright reads PLAYWRIGHT_BASE_URL at config load
+
+    Returns a dict to be merged into os.environ before spawning the child.
+    Added 2026-05-12 (Kate drop) — was the missing link that made env-switching
+    in the UI silently do nothing.
+    """
+    if fw == "cypress":
+        return {"BOURACKA_ENV": env, "BOURACKA_BASE": base_url}
+    if fw == "playwright":
+        return {"PLAYWRIGHT_BASE_URL": base_url, "BOURACKA_BASE": base_url}
+    if fw == "selenium":
+        return {"BOURACKA_BASE": base_url, "BOURACKA_ENV": env}
+    return {}
 
 
 def generate_run_id() -> str:
@@ -97,8 +141,11 @@ async def run_async(run_id: str, env: str, tcs: list[str],
             log.append(f"[{fw}] (no command — skipping; tooling missing on PATH)")
             log.append("")
             continue
+        env_inject = _build_env_inject(fw, env, base_url)
         log.append(f"[{fw}] $ {' '.join(cmd)}")
-        rc = await _run_subprocess(cmd, cwd=repo_root, log=log, prefix=f"[{fw}]")
+        log.append(f"[{fw}] env inject: {env_inject}")
+        rc = await _run_subprocess(cmd, cwd=repo_root, log=log,
+                                    prefix=f"[{fw}]", env_inject=env_inject)
         exit_codes[fw] = rc
         log.append(f"[{fw}] exit_code={rc}")
         log.append("")
@@ -107,7 +154,7 @@ async def run_async(run_id: str, env: str, tcs: list[str],
     log.append("=== consolidate_results.py ===")
     cons_cmd = [
         sys.executable, str(repo_root / "tools" / "consolidate_results.py"),
-        "--env", env,
+        "--env", normalize_env_for_consolidator(env),
         "--env-url", base_url,
         "--run-id", run_id,
         "--reporter-command", f"bouracka-ui run env={env} fws={','.join(expanded_fws)} tcs={','.join(tcs)}",
@@ -200,15 +247,25 @@ def _tc_to_cypress_glob(tc: str) -> str:
 # ──────────────────────────────────────────────────────────────────────────
 
 async def _run_subprocess(cmd: list[str], cwd: Path, log: list[str],
-                          prefix: str) -> int:
+                          prefix: str, env_inject: dict[str, str] | None = None) -> int:
     """Run cmd via asyncio subprocess; stream stdout/stderr line-by-line into log.
-    Returns exit code."""
+    Returns exit code.
+
+    env_inject (2026-05-12 Kate drop): per-framework env var overlay applied to
+    a copy of os.environ before child spawn. Used to propagate BOURACKA_ENV /
+    BOURACKA_BASE / PLAYWRIGHT_BASE_URL so config-load-time URL resolution in
+    each framework actually sees the env the UI selected.
+    """
+    proc_env = dict(os.environ)
+    if env_inject:
+        proc_env.update(env_inject)
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             cwd=str(cwd),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
+            env=proc_env,
         )
     except FileNotFoundError as e:
         log.append(f"{prefix} tooling not found: {e}")

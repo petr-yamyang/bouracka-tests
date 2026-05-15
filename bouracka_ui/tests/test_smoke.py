@@ -51,7 +51,7 @@ def test_health_returns_versions():
     assert r.status_code == 200
     j = r.json()
     assert j["schema_version"] == "1.0"
-    assert j["server_version"] == "0.1.0"
+    assert j["server_version"] == "0.1.5-dev4"
     assert "tools" in j
 
 
@@ -67,7 +67,8 @@ def test_envs_returns_3_envs():
     codes = {e["code"] for e in j}
     assert {"ENV-PUB", "ENV-TST", "ENV-DMO"} <= codes
     schema_envs = {e["schema_env"] for e in j}
-    assert schema_envs <= {"demo", "tst", "uat", "prod-readonly", "prod-writable"}
+    # tst-demo added 2026-05-12 for SUPIN-internal driving-school DEMO
+    assert schema_envs <= {"demo", "tst", "tst-demo", "uat", "prod-readonly", "prod-writable"}
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -463,3 +464,80 @@ def test_diagnostics_snapshot():
     import json as _json
     meta = _json.loads(zf.read("manifest.json"))
     assert meta["kind"] == "bouracka-ui-diagnostics-snapshot"
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# §8. BUG-K-009/010/012 — Brief #004 hotfix bundle tests
+# ──────────────────────────────────────────────────────────────────────────
+
+def test_normalize_env_for_consolidator():
+    """F-1 (BUG-K-010): UI env labels normalize to consolidator tier names."""
+    from bouracka_ui.dispatcher import normalize_env_for_consolidator
+    assert normalize_env_for_consolidator("tst-demo") == "demo"
+    assert normalize_env_for_consolidator("demo") == "demo"
+    assert normalize_env_for_consolidator("tst") == "tst"
+    assert normalize_env_for_consolidator("uat") == "uat"
+    assert normalize_env_for_consolidator("prod-readonly") == "prod-readonly"
+    with pytest.raises(ValueError):
+        normalize_env_for_consolidator("bogus-env")
+
+
+def test_dispatcher_real_mode_normalizes_env_in_consolidator(monkeypatch, tmp_path):
+    """F-1 (BUG-K-010): run_async (real mode) builds cons_cmd with --env demo for tst-demo."""
+    import asyncio
+    import bouracka_ui.dispatcher as disp
+
+    captured_cmds: list[list] = []
+
+    async def fake_run_subprocess(cmd, *, cwd, log, prefix, env_inject=None):
+        captured_cmds.append(list(cmd))
+        return 0
+
+    monkeypatch.setattr(disp, "_run_subprocess", fake_run_subprocess)
+    monkeypatch.setenv("BOURACKA_UI_DISPATCH_MODE", "real")  # disable mock mode
+
+    run_id = disp.generate_run_id()
+    registry: dict = {run_id: {
+        "run_id": run_id, "env": "tst-demo", "tcs": ["TC-CP-008"],
+        "frameworks": ["cypress"], "status": "pending",
+        "log_lines": [], "exit_code": None, "envelope_path": None, "summary": {},
+    }}
+
+    async def _go():
+        await disp.run_async(
+            run_id=run_id, env="tst-demo", tcs=["TC-CP-008"],
+            frameworks=["cypress"], repo_root=tmp_path, registry=registry,
+        )
+
+    asyncio.run(_go())
+
+    cons = next(
+        (c for c in captured_cmds if any("consolidate_results.py" in str(a) for a in c)),
+        None,
+    )
+    assert cons is not None, f"consolidator subprocess not captured; all cmds: {captured_cmds}"
+    env_idx = cons.index("--env")
+    assert cons[env_idx + 1] == "demo", \
+        f"expected '--env demo' but got '--env {cons[env_idx + 1]}'"
+
+
+def test_test_runs_append_not_overwrite():
+    """F-2 (BUG-K-012): workbook_io has no append_test_run → Outcome A documented."""
+    import bouracka_ui.workbook_io as wio
+    assert not hasattr(wio, "append_test_run"), (
+        "append_test_run exists — switch to Outcome B and implement the append test"
+    )
+
+
+def test_install_runbook_has_prereq_section():
+    """F-3 (BUG-K-009): install runbooks mention Node.js + selenium."""
+    root = Path(__file__).resolve().parents[2]
+    paths = [
+        root / "delivery" / "KATE-V0.1.4-REINSTALL-CS.md",
+        root / "delivery" / "SUPIN-SERVER-INSTALL-FROM-ZERO-CS.md",
+    ]
+    for p in paths:
+        assert p.exists(), f"runbook not found: {p}"
+        text = p.read_text(encoding="utf-8")
+        assert "Node.js" in text, f"{p.name}: missing 'Node.js' prereq"
+        assert "selenium" in text.lower(), f"{p.name}: missing 'selenium' prereq"

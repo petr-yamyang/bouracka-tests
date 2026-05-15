@@ -7,6 +7,16 @@ TestPlan version bumps are decoupled** (see `_specs/EMAIL-DELIVERABILITY-RULES-v
 
 ---
 
+## [bouracka-ui v0.1.5-dev4] — 2026-05-15 — Hotfix bundle (K-009/010/012)
+
+### Bug fixes
+
+- **BUG-K-010** — `dispatcher.py` passed `--env tst-demo` verbatim to `consolidate_results.py`, which rejects compound env labels. Added `UI_ENV_TO_CONSOLIDATOR_TIER` lookup table and `normalize_env_for_consolidator()` helper; consolidator now receives the correct tier name (`demo`, `tst`, etc.) while `--env-url` continues to carry the full sub-env URL.
+- **BUG-K-012 — Outcome A** — investigation confirms `06_TestRuns` workbook sheet is **not touched** by dispatch (`server.py` + `workbook_io.py` have no `append_test_run` function). Runs are persisted as `runs/cross-framework-*.json` envelope files only. Kate's reported "TestRuns overwrite" is caused by the v0.4.3→v0.4.4 patcher not preserving operator-added rows; this is Brief #001b's scope.
+- **BUG-K-009** — Added `§1.0 Předpoklady` prereq table (Node.js + selenium) to Kate reinstall runbook, Pete HP-Elite runbook, and SUPIN server install runbook. Prevents `[tooling not found]` / `WinError 2` dispatch failures on machines without Node.js.
+
+---
+
 ## [v0.5.5] — 2026-05-10 — bouracka-ui v0.1.0 (presentation-layer UI + HP Elite air-gap workflow)
 
 ### Added — `bouracka_ui/` package (separate Python wheel)
