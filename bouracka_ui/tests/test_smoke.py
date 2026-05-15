@@ -100,7 +100,10 @@ def test_tcs_filtered_by_framework():
     j = r.json()
     for tc in j:
         targets = (tc.get("framework_targets") or "").lower()
-        assert "cypress" in targets, f"{tc['code']}: framework_targets={targets}"
+        # BUG-K-001: empty framework_targets means "applies to all frameworks";
+        # filter legitimately includes such TCs in any framework query.
+        if targets:
+            assert "cypress" in targets, f"{tc['code']}: framework_targets={targets}"
 
 
 # ──────────────────────────────────────────────────────────────────────────

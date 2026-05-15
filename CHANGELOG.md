@@ -7,6 +7,54 @@ TestPlan version bumps are decoupled** (see `_specs/EMAIL-DELIVERABILITY-RULES-v
 
 ---
 
+## [bouracka-ui v0.1.5-dev8] — 2026-05-15 — Brief #001: workbook patcher v0.4.3→v0.4.4
+
+**Internal-only dev build.** No bouracka_ui Python code change; this brief lives in `tools/` + repo-root xlsx snapshots. Integration milestone name (`dev8`) is by merge order, not by Python release semantics.
+
+### Scope IN — `tools/workbook-v0.4.3-to-v0.4.4.py` (one-shot idempotent patcher)
+
+- **`02e_TestSteps` sheet creation** — splits `steps_summary` text column into one row per step. Preserves step ordering; assigns `step_code` per `STP-{TC}-{NN}` convention. Idempotent: re-running on a workbook that already has `02e_TestSteps` is a no-op.
+- **`steps_count` column added to `02_TestCases`** — populated from newly-created `02e_TestSteps` row counts per TC.
+- **`evidence_*` columns added to `08_Bugs`** — migrates legacy `screenshot_ref` and `trace_ref` text columns into new structured fields (`evidence_path`, `evidence_kind`, `evidence_url`, `evidence_on_disk_flag`). Original columns preserved for back-compat reads (M3's `workbook_io.get_bug_evidence` reads both old and new conventions).
+- **`11_Changelog` sheet append** — patcher writes one row noting the v0.4.3→v0.4.4 schema upgrade with timestamp + operator name from `git config user.name`.
+- **`PATCH-REPORT-<timestamp>.md`** written to `tools/patcher-reports/`. Records every cell mutation: which sheet, which row, before/after value.
+- **`tools/tests/test_workbook_patcher.py`** — pytest coverage with synthetic v0.4.3 fixture. Idempotency tested by running the patcher twice and asserting checksums match.
+- **`tools/tests/conftest.py`** — shared fixtures: `synthetic_v043_workbook(tmp_path)` and `fixture_maker()`.
+
+### Scope IN — workbook snapshots at repo root
+
+- `BOURACKA-TESTPLAN-v0.4.3.xlsx` — pre-patch reference snapshot.
+- `BOURACKA-TESTPLAN-v0.4.4.xlsx` — patcher output. **This is now the active workbook** — bouracka_ui auto-discovery picks it up at repo root, overriding any earlier fixture-based discovery.
+
+### Regression fixed in this merge (M6 fallout)
+
+- **`test_tcs_filtered_by_framework` assertion strengthened** — the test naively required `"cypress"` to appear in every returned TC's `framework_targets`, but BUG-K-001 (v0.1.4) already documented that **empty `framework_targets` means "applies to all frameworks"** and the server filter legitimately includes such TCs in any framework query. Before M6 the repo-root workbook had no empty-targets TCs, so the test passed by accident; v0.4.4 surfaced `TC-CP-NEW-A` with empty `framework_targets` and exposed the latent test bug. **Fix:** skip the per-TC assertion when `targets` is empty; the server-side filter logic itself remains untouched.
+
+### Scope OUT — explicitly deferred
+
+- **Brief #001b — patcher data-migration `--source-data` flag** — promoted to M7 (`cp-supin-09-v0.4.4-data-migration`). M7 will conflict with M6 since both touch the patcher; resolved by combining both surfaces.
+- **Patcher operating against live customer workbooks** — only synthetic + tracked repo snapshots are exercised. Kate's drop is air-gapped from workbook upgrades; SUPIN-server drop carries the patcher but won't run it automatically.
+- **Multi-step migration chains** (e.g., v0.4.2→v0.4.3→v0.4.4) — single-hop only. Pre-v0.4.3 workbooks need manual upgrade first.
+- **Backups before patching** — patcher overwrites in-place by default. `--backup` flag is v0.1.6 candidate (Brief #001c).
+
+### Regression candidates (suggested follow-up tests)
+
+| Surface | Churn | Suggested coverage |
+|---|---|---|
+| `tools/workbook-v0.4.3-to-v0.4.4.py` (NEW) | One-shot idempotent — but idempotency only tested with synthetic mini fixture (4 TCs, 2 bugs) | Add a sanity test that runs the patcher twice on the **repo's actual** v0.4.4.xlsx and asserts the file is byte-identical on second run. |
+| `02e_TestSteps` synthesis from `steps_summary` split | Logic depends on text format | Add fixture variants: well-formed, mixed separators, empty cells, trailing whitespace. Each should produce predictable `step_code` sequences. |
+| `08_Bugs` evidence migration | Reads legacy fields, writes new structured fields | Test: migrate a bug with both legacy fields populated; assert new fields filled correctly AND legacy fields preserved unchanged (back-compat). |
+| `bouracka_ui/workbook_io.list_tcs()` reading v0.4.4 | M3's `workbook_io` accommodates both via column-name lookup, now exercised against real workbook for the first time | Smoke: run `list_tcs()` against both bundled .xlsx snapshots; assert same set of TC codes, same framework_targets values (modulo empty-vs-all semantics). |
+| Repo-root workbook discovery priority | bouracka_ui auto-discovery now picks v0.4.4 over a tester-installed v0.4.3 | Document the discovery order in `BOURACKA-UI-DESIGN.md` §3.2. Add a test that asserts highest-priority candidate. |
+
+### Known issues at merge time
+
+- **Test fixture coverage thin** — `synthetic-v0.4.3-mini.xlsx` has 4 TCs and 2 bugs. Real Bouračka workbook has ~30 TCs and ~15 bugs. Patcher may have latent issues at scale.
+- **`tools/patcher-reports/` directory** kept tracked via `.gitkeep`; actual reports are gitignored. Test artifacts can pollute this directory if patcher is run during pytest; consider tmp-path redirection.
+- **No `--dry-run` exit-code contract documented** — patcher currently always exits 0; consumers can't distinguish "dry-run shows no changes needed" from "dry-run completed but would have changed N cells." Defer to v0.1.6.
+
+---
+
 ## [bouracka-ui v0.1.5-dev7] — 2026-05-15 — Brief #007: cross-framework check report (FR-K-007)
 
 **Internal-only dev build.** Promoted from cp-supin-15's "v0.5.6 / dev5" naming to "v0.1.5-dev7" milestone slot for chronological clarity in the integration branch. bouracka_ui Python code version stays `0.1.5.dev5` (no version bump in pyproject); integration milestone naming uses merge order.

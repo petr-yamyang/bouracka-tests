@@ -82,11 +82,16 @@ _install/SECOPS-COMPONENTS-CS.md             # ČKP SecOps audit doc — interna
 _specs/SUPIN-INTERNAL-companion/DIAGNOSTICS-PLAYBOOK-SUPIN-INTERNAL.md
 _specs/SUPIN-INTERNAL-companion/*.populated.md
 _specs/SUPIN-INTERNAL-companion/*-INTERNAL.md
+_specs/SUPIN-INTERNAL-companion/*-INTERNAL-2*.md
 !_specs/SUPIN-INTERNAL-companion/*-INTERNAL-TEMPLATE.md
+!_specs/SUPIN-INTERNAL-companion/*-INTERNAL-*-STARTER.md
 # Defensive: also block any local-config files testers create
 _local-config.txt
 *-local-config.txt
 recon/raw/                                  # raw transcripts may contain unredacted operator data
+
+# Workbook patcher run reports (timestamped artefacts, not source)
+tools/patcher-reports/PATCH-REPORT-*.md
 
 # Python build artefacts
 bouracka_ui/build/

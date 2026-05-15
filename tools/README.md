@@ -86,11 +86,54 @@ Sketches and one-shots stay in the operator's `outputs/` scratchpad.
 Promotion = move + write a `tools/README.md` row + add a PowerShell
 wrapper if the audience runs Windows.
 
+## workbook-v0.4.3-to-v0.4.4.py
+
+One-shot, idempotent workbook schema patcher.  Upgrades
+`BOURACKA-TESTPLAN-v0.4.3.xlsx` to `v0.4.4`:
+
+- Creates sheet `02e_TestSteps` by splitting `02_TestCases.steps_summary`
+- Adds `steps_count` column to `02_TestCases`
+- Validates `02c_TC_Assertions.step_id` FK; reports orphans (does not modify)
+- Adds `evidence_*` columns to `08_Bugs`; migrates `screenshot_ref` / `trace_ref`
+- Appends a changelog row to `11_Changelog`
+- Writes a timestamped PATCH-REPORT to `tools/patcher-reports/`
+
+**Quick start:**
+
+```powershell
+# inspect what the patcher would do (no write)
+python tools/workbook-v0.4.3-to-v0.4.4.py --dry-run -v
+
+# apply the patch
+python tools/workbook-v0.4.3-to-v0.4.4.py -v
+
+# custom paths
+python tools/workbook-v0.4.3-to-v0.4.4.py `
+    --source path/to/BOURACKA-TESTPLAN-v0.4.3.xlsx `
+    --dest   path/to/BOURACKA-TESTPLAN-v0.4.4.xlsx `
+    -v
+```
+
+**Exit codes:** 0 = clean, 1 = warnings (orphans / KP-review flags), 2 = input error, 3 = write error.
+
+**Prerequisites:** `pip install openpyxl`
+
+**Tests:**
+
+```powershell
+pytest tools/tests/ -v -m "not integration"    # fast (synthetic fixture, <5s)
+pytest tools/tests/ -v -m integration          # slow (real workbook, manual)
+```
+
+**Fixture regeneration:** `python tools/tests/fixtures/make_synthetic_fixture.py`
+
+---
+
 ## Status
 
 | Item | Value |
 |------|-------|
-| Tools current | 4 ready + 2 planned |
-| Coverage | photo conversion · mindmap rendering · install validation · proxy setup |
+| Tools current | 5 ready + 2 planned |
+| Coverage | photo conversion · mindmap rendering · install validation · proxy setup · workbook schema patch |
 | Audience | operator + 2 colleagues + SecOps |
-| Status | v0.2 — refreshed in CP-SUPIN-02 rev 7 |
+| Status | v0.3 — workbook patcher added in CP-SUPIN-07 |
