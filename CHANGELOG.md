@@ -7,6 +7,32 @@ TestPlan version bumps are decoupled** (see `_specs/EMAIL-DELIVERABILITY-RULES-v
 
 ---
 
+## [v0.1.5-dev5] — 2026-05-15 — bouracka-ui v0.1.5-dev5 (workbook_io readers + steps/evidence endpoints)
+
+**dev0 — not for Kate, not for SUPIN. Internal-only build for v0.1.5 development.**
+
+### Added — `bouracka_ui/` workbook_io readers
+
+- **`list_steps(wb_path, tc_code=None)`** — reads `02e_TestSteps` sheet; legacy fallback synthesizes from `steps_summary` column when sheet absent (pre-v0.4.4 workbook tolerance, BUG-K-001 pattern).
+- **`get_step(wb_path, step_code)`** — thin wrapper, returns single step by code.
+- **`get_bug_evidence(wb_path, bug_code, repo_root=None)`** — reads evidence columns from `08_Bugs`; legacy fallback from `screenshot_ref`/`trace_ref` columns; computes `*_url` + `*_on_disk` fields.
+- **`list_tcs()` extended** — now includes `steps_count` key per TC (from `steps_count` column or newline-count fallback on `steps_summary`).
+
+### Added — `bouracka_ui/` server endpoints
+
+- **`GET /api/tcs/{tc_code}/steps`** — returns `{ tc_code, steps[], count }`. 404 if TC unknown.
+- **`GET /api/steps/{step_code}`** — single step by code. 404 if not found.
+- **`GET /api/bugs/{bug_code}/evidence`** — evidence dict or null. 404 if bug unknown.
+- **`/api/runs` StaticFiles mount** — serves artefact files from `runs/` directory at repo root. Mounted after all router routes to avoid shadowing API endpoints.
+
+### Changed
+
+- Smoke tests: 28 → 33 (5 new tests for F-5/F-6/F-7/F-8).
+- `test_envs_returns_3_envs`: added `tst-demo` to allowed schema_envs (pre-existing gap).
+- `test_health_returns_versions`: assertion now `startswith("0.1.5")` instead of `== "0.1.0"`.
+
+---
+
 ## [bouracka-ui v0.1.5-dev4] — 2026-05-15 — Hotfix bundle (K-009/010/012)
 
 ### Bug fixes

@@ -90,7 +90,7 @@ def _resolve_repo_root() -> Path:
 REPO_ROOT = _resolve_repo_root()
 WORKBOOK_PATH = Path(os.environ.get(
     "BOURACKA_UI_WORKBOOK",
-    str(REPO_ROOT / "BOURACKA-TESTPLAN-v0.4.2.xlsx")
+    str(REPO_ROOT / "BOURACKA-TESTPLAN-v0.4.3.xlsx")
 ))
 RUNS_DIR = Path(os.environ.get(
     "BOURACKA_UI_RUNS_DIR",
@@ -430,6 +430,114 @@ async def file_bug(payload: dict):
 
 
 # ──────────────────────────────────────────────────────────────────────────
+# §3.1 endpoint 9a — GET bug by code (single)  -- v0.1.3 Block 2
+# ──────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/bugs/{code}")
+async def get_single_bug(code: str):
+    """Fetch a single bug by code, full fields for the edit form."""
+    bug = workbook_io.get_bug(WORKBOOK_PATH, code)
+    if bug is None:
+        raise HTTPException(404, f"bug not found: {code}")
+    return bug
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# §3.1 endpoint 9b — PUT bug (update existing)  -- v0.1.3 Block 2
+# ──────────────────────────────────────────────────────────────────────────
+
+@app.put("/api/bugs/{code}")
+async def update_existing_bug(code: str, payload: dict):
+    """Update fields on an existing bug. Body may be partial — only specified
+    fields are written. id + code + created_at are immutable.
+
+    Conservative retest workflow: status changes to/from 'verified-fixed' and
+    'reopened' are usually triggered by the retest confirmation UI but are
+    allowed via direct PUT for power users.
+    """
+    try:
+        updated = workbook_io.update_bug(WORKBOOK_PATH, code, payload)
+    except workbook_io.WorkbookLockedError as e:
+        raise HTTPException(409, f"Workbook locked (Excel open?): {e}")
+    except FileNotFoundError:
+        raise HTTPException(503, "workbook unavailable")
+    if updated is None:
+        raise HTTPException(404, f"bug not found: {code}")
+    _server_log(f"bug updated: {code}  fields={list(payload.keys())}")
+    return updated
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# §3.1 endpoint 9c — POST retest of bug's linked TC  -- v0.1.3 Block 2
+# ──────────────────────────────────────────────────────────────────────────
+
+@app.post("/api/bugs/{code}/retest")
+async def retest_bug(code: str, payload: dict | None = None):
+    """Trigger a re-run of the TC linked to this bug.
+
+    Returns the new run_id immediately (HTTP 202). The UI polls the run; once
+    complete, the UI offers the operator a confirmation button to flip bug
+    status to 'verified-fixed' (on PASS) or 'reopened' (on FAIL). Per Pete's
+    conservative-retest decision 2026-05-13: no silent status flips.
+
+    Body (optional): { env, frameworks }. Defaults:
+      env       = bug.env_where_present (mapped via ENV_CODE_TO_SCHEMA)
+      frameworks = ["all"]
+    """
+    bug = workbook_io.get_bug(WORKBOOK_PATH, code)
+    if bug is None:
+        raise HTTPException(404, f"bug not found: {code}")
+    tc_code = bug.get("linked_tc_ref")
+    if not tc_code:
+        raise HTTPException(422, f"bug {code} has no linked_tc_ref; cannot retest")
+
+    # Env resolution: prefer payload override, then map from bug's
+    # env_where_present (workbook code e.g. ENV-DMO) to dispatcher schema enum.
+    p = payload or {}
+    env_schema = p.get("env")
+    if not env_schema:
+        env_code = bug.get("env_where_present") or "ENV-DMO"
+        env_schema = workbook_io.ENV_CODE_TO_SCHEMA.get(env_code, "demo")
+    frameworks = p.get("frameworks") or ["all"]
+
+    # Spawn the run via the existing dispatcher infrastructure.
+    run_id = dispatcher.generate_run_id()
+    _RUN_REGISTRY[run_id] = {
+        "run_id": run_id,
+        "env": env_schema,
+        "tcs": [tc_code],
+        "frameworks": frameworks,
+        "status": "pending",
+        "started_at": _dt.datetime.now(_dt.timezone.utc).isoformat() + "Z",
+        "log_lines": [f"[retest] triggered for bug {code}, linked TC {tc_code}"],
+        "exit_code": None,
+        "envelope_path": None,
+        # Retest-specific metadata for the UI follow-up:
+        "retest_of_bug": code,
+    }
+    asyncio.create_task(dispatcher.run_async(
+        run_id=run_id,
+        env=env_schema,
+        tcs=[tc_code],
+        frameworks=frameworks,
+        repo_root=REPO_ROOT,
+        registry=_RUN_REGISTRY,
+    ))
+    # Record the retest run_id back on the bug (best-effort; non-fatal if fails)
+    try:
+        workbook_io.set_bug_retest_run_id(WORKBOOK_PATH, code, run_id)
+    except Exception as e:
+        _server_log(f"[retest] could not record run_id on bug {code}: {e}")
+
+    _server_log(f"bug retest triggered: bug={code}  tc={tc_code}  run={run_id}")
+    return JSONResponse(
+        {"run_id": run_id, "bug_code": code, "tc_code": tc_code,
+         "env": env_schema, "status": "pending"},
+        status_code=202,
+    )
+
+
+# ──────────────────────────────────────────────────────────────────────────
 # §3.1 endpoint 10 — Trace bundle export (HP Elite air-gap workflow)
 # ──────────────────────────────────────────────────────────────────────────
 
@@ -508,6 +616,41 @@ async def import_bundle(file: UploadFile = File(...)):
 # §3.1 endpoint 12 — Diagnostics snapshot (no-run system dump)
 # ──────────────────────────────────────────────────────────────────────────
 
+# ──────────────────────────────────────────────────────────────────────────
+# v0.1.5-dev5: steps + bug-evidence endpoints (F-5/F-6/F-7)
+# ──────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/tcs/{tc_code}/steps")
+async def get_tc_steps(tc_code: str):
+    """Return list of steps for a TC. 404 if TC doesn't exist; [] if TC has no steps."""
+    tcs = workbook_io.list_tcs(WORKBOOK_PATH)
+    if not any(tc["code"] == tc_code for tc in tcs):
+        raise HTTPException(404, f"test case not found: {tc_code}")
+    steps = workbook_io.list_steps(WORKBOOK_PATH, tc_code=tc_code)
+    return {"tc_code": tc_code, "steps": steps, "count": len(steps)}
+
+
+@app.get("/api/steps/{step_code}")
+async def get_step_by_code(step_code: str):
+    """Return single step by step_code. 404 if not found."""
+    step = workbook_io.get_step(WORKBOOK_PATH, step_code)
+    if step is None:
+        raise HTTPException(404, f"step not found: {step_code}")
+    return step
+
+
+@app.get("/api/bugs/{bug_code}/evidence")
+async def get_bug_evidence(bug_code: str):
+    """Return visual-evidence record for a bug.
+    404 if bug doesn't exist. 200 + null if bug exists but has no evidence.
+    """
+    bug = workbook_io.get_bug(WORKBOOK_PATH, bug_code)
+    if bug is None:
+        raise HTTPException(404, f"bug not found: {bug_code}")
+    evidence = workbook_io.get_bug_evidence(WORKBOOK_PATH, bug_code, repo_root=REPO_ROOT)
+    return JSONResponse(content=evidence)
+
+
 @app.get("/api/diagnostics/snapshot")
 async def diagnostics_snapshot():
     """Build a no-run diagnostics ZIP for "UI itself misbehaving" debugging.
@@ -529,3 +672,16 @@ async def diagnostics_snapshot():
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="bouracka-ui-diag-{ts}.zip"'},
     )
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# v0.1.5-dev5: /api/runs static files mount (F-8)
+# Must be added AFTER all route definitions so API routes take priority.
+# check_dir=False: mount even when runs/ doesn't exist yet (first install).
+# ──────────────────────────────────────────────────────────────────────────
+
+app.mount(
+    "/api/runs",
+    StaticFiles(directory=str(RUNS_DIR), check_dir=False),
+    name="runs-artefacts",
+)
