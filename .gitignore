@@ -100,3 +100,7 @@ bouracka_ui/bouracka_ui/__pycache__/
 bouracka_ui/tests/__pycache__/
 bouracka_ui/.pytest_cache/
 *.egg-info/
+
+# Cypress runtime outputs at repo root (long filenames break Windows MAX_PATH)
+cypress/screenshots/
+cypress/videos/
