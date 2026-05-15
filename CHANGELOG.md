@@ -7,6 +7,26 @@ TestPlan version bumps are decoupled** (see `_specs/EMAIL-DELIVERABILITY-RULES-v
 
 ---
 
+## [v0.5.6] — 2026-05-15 — bouracka-ui v0.1.5-dev5 (cross-framework check report, FR-K-007)
+
+### Added — `bouracka_ui/` package
+
+- **`GET /api/runs/{run_id}/cross-check`** — returns cross-framework agreement
+  projection as JSON (`build_cross_check` over the completed run envelope).
+  Fields: `agreement_summary` · `divergent_tcs` · `tc_full_matrix`.
+- **`GET /api/runs/{run_id}/cross-check.html`** — standalone HTML cross-check
+  report; no external deps, inline CSS, collapsible full-matrix table.
+- **`_find_envelope_for_run(run_id)`** server helper — walks `runs/` for the
+  matching `cross-framework-*.json` envelope; shared by both new endpoints.
+- **`cross_check.py`** Opus prototype promoted to tracked module (unchanged);
+  `test_cross_check.py` 11-test suite added to test suite.
+- **`dispatcher.py`** — added `tst-demo` → `https://tst.demo.bouracka.cz` to
+  `ENV_TO_BASE_URL` (required for cross-check test_top_level_fields coverage).
+- **`test_smoke.py`** — 3 new tests: cross-check JSON structure, HTML render,
+  404 on unknown run_id. 42 smoke tests total (39 → 42).
+
+---
+
 ## [v0.5.5] — 2026-05-10 — bouracka-ui v0.1.0 (presentation-layer UI + HP Elite air-gap workflow)
 
 ### Added — `bouracka_ui/` package (separate Python wheel)

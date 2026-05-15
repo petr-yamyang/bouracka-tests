@@ -26,7 +26,7 @@ from fastapi.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
 
 from . import __schema_version__, __version__
-from . import workbook_io, dispatcher, trace_bundle
+from . import workbook_io, dispatcher, trace_bundle, cross_check
 
 # ──────────────────────────────────────────────────────────────────────────
 # Configuration — overridable via environment variables for CLI flag passthrough
@@ -97,6 +97,21 @@ RUNS_DIR = Path(os.environ.get(
     str(REPO_ROOT / "runs")
 ))
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+
+def _find_envelope_for_run(run_id: str) -> Path | None:
+    """Walk runs/ for the cross-framework envelope JSON matching run_id."""
+    if not RUNS_DIR.exists():
+        return None
+    for p in RUNS_DIR.glob("cross-framework-*.json"):
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            if data.get("run_id") == run_id:
+                return p
+        except Exception:
+            continue
+    return None
+
 
 # In-memory run-state registry (run_id → dict). Replaced by sqlite/file cache at v0.2.
 _RUN_REGISTRY: dict[str, dict] = {}
@@ -502,6 +517,38 @@ async def import_bundle(file: UploadFile = File(...)):
         raise HTTPException(422, f"Bundle import failed: {e}")
     _server_log(f"bundle imported: run_id={info['run_id']} ({len(raw)} bytes)")
     return info
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# §3.1 endpoint 13 — Cross-framework check (FR-K-007)
+# ──────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/runs/{run_id}/cross-check")
+async def get_cross_check(run_id: str):
+    """Return cross-framework agreement projection as JSON for a completed run."""
+    envelope_path = _find_envelope_for_run(run_id)
+    if envelope_path is None:
+        raise HTTPException(404, f"Envelope not found for run_id {run_id!r}")
+    try:
+        envelope = json.loads(envelope_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise HTTPException(500, f"Failed to read envelope: {exc}")
+    return JSONResponse(content=cross_check.build_cross_check(envelope))
+
+
+@app.get("/api/runs/{run_id}/cross-check.html")
+async def get_cross_check_html(run_id: str):
+    """Return cross-framework check as a standalone HTML report."""
+    envelope_path = _find_envelope_for_run(run_id)
+    if envelope_path is None:
+        raise HTTPException(404, f"Envelope not found for run_id {run_id!r}")
+    try:
+        envelope = json.loads(envelope_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise HTTPException(500, f"Failed to read envelope: {exc}")
+    cc = cross_check.build_cross_check(envelope)
+    return Response(content=cross_check.render_cross_check_html(cc),
+                    media_type="text/html; charset=utf-8")
 
 
 # ──────────────────────────────────────────────────────────────────────────

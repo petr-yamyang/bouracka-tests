@@ -32,6 +32,7 @@ RUN_ID_RE = re.compile(r"^run-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z-[0-9a-f]{7}$"
 ENV_TO_BASE_URL = {
     "demo":          "https://demo.bouracka.cz",
     "tst":           "https://tst.bouracka.cz",
+    "tst-demo":      "https://tst.demo.bouracka.cz",
     "uat":           "https://uat.bouracka.cz",
     "prod-readonly": "https://www.bouracka.cz",
 }
