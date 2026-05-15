@@ -7,6 +7,47 @@ TestPlan version bumps are decoupled** (see `_specs/EMAIL-DELIVERABILITY-RULES-v
 
 ---
 
+## [bouracka-ui v0.1.5-dev6] — 2026-05-15 — Brief #006: integration probe harness expansion
+
+**Internal-only dev build — no Kate/SUPIN ship yet.** Recon-harness scope only; bouracka_ui Python code untouched (still dev5 in `pyproject.toml`). Integration milestone naming uses the merge order.
+
+### Scope IN — `delivery/*/recon-harness/` (mirrored to PETE-HP-ELITE-DROP-2026-05-13 and SUPIN-SERVER-DROP-2026-05-13)
+
+- **3 new probe functions** added to `int_recon.py`: `probe_http_get_json`, `probe_http_head_with_referrer`, `probe_https_tls_verify`. All read-only, stdlib-only, Python 3.8+.
+- **`PROBE_FUNCTIONS` dispatch table** — `probe_target()` is now driven by each target's `probe_types` list in `targets.json` instead of the hardcoded SOAP-only sequence. New probe types can be added without touching `probe_target()`.
+- **URL parsing helpers** — `parse_host()`, `parse_port()` handle arbitrary URL schemes (http/https with explicit/default ports).
+- **Output schema → v0.2** — JSON reports now carry `schema_version: "0.2"` and a new `integration_coverage` top-level block summarising probe outcomes per target category.
+- **`targets.json` → v1.1** — catalog grows from 4 to 11 entries. Adds 7 internet targets sourced from INT-001 (reCAPTCHA api.js + siteverify), INT-006 (Azure outage feed), INT-007/008/009 (OpenStreetMap tiles, Google Maps geocoding, OSRM routing — supporting recon for v0.2 map features). Each entry now declares its `probe_types` array.
+- **`README-CS.md` → v0.2.0** — added §4 probe-type compatibility matrix (which probe type works against which target type) and §5 list of pending endpoints awaiting URL delivery from Michal Ciberej.
+
+### Sandbox smoke verification (Brief #006 author's own dispatch)
+
+- 4 × internal SOAP targets (D8WS/D5WS STD/TST on 172.16.1.13): all FAIL — expected, no VPN reach in sandbox.
+- 7 × internet targets: all PASS, including TLS handshake validation and JSON content parsing.
+
+### Scope OUT — explicitly deferred
+
+- **INT-002 / INT-003 / INT-004 / INT-005 endpoint URLs** — blocked on Michal Ciberej delivering the SEDN integration inventory. `targets.json` §5 carries placeholders.
+- **WSDL parse for internet targets** — REST/JSON endpoints don't expose WSDL; the harness now declares `wsdl_get` only on SOAP-flavoured targets via `probe_types`.
+- **Kate's delivery drop** (`delivery/KATE-DROP-2026-05-13/`) — recon tooling is not shipped to Kate; recon-harness lives only in Pete-HP-Elite and SUPIN-server drops.
+- **bouracka_ui version bump** — Brief #006 doesn't change any Python code in `bouracka_ui/`, so `__version__` and `pyproject.toml::version` remain `0.1.5.dev5`. Integration-branch milestone naming (v0.1.5-dev6) is informational only.
+
+### Regression candidates (suggested follow-up tests)
+
+| Surface | Churn | Suggested coverage |
+|---|---|---|
+| `recon-harness/int_recon.py` (903 lines, full rewrite) | NEW file — large attack surface | Unit test: assert every `probe_type` listed in `targets.json` resolves in `PROBE_FUNCTIONS`. Catches dict-name typos that would otherwise silently skip probes. |
+| `recon-harness/targets.json` (108 lines, hand-curated) | NEW catalog | Schema validator: `target_id` unique; `url` parses; `probe_types ⊆ keys(PROBE_FUNCTIONS)`; `expected_role ∈ {STD, TST}`. |
+| TLS verify behaviour | Platform-sensitive (`ssl` stdlib) | Sanity-run the harness on HP-Elite Windows host before next ship. Stdlib ssl context defaults differ between OpenSSL versions. |
+| Output schema v0.1 → v0.2 | Backward compat at risk for Claude ingestion | If any tooling consumes the v0.1 schema, write a smoke test pinning the v0.2 fields it expects. |
+
+### Known issues at merge time
+
+- 4 SOAP targets always fail outside SUPIN VPN — by design, but creates 4 PASS / 4 FAIL halo in every run that confuses on first read. Mitigation candidate: add `--skip-internal` flag or auto-detect by attempting TCP connect first.
+- Output directory `recon-harness/outputs/` is not gitignored at the per-drop level — generated reports will appear in `git status` after each run. Consider per-drop `.gitignore`.
+
+---
+
 ## [v0.1.5-dev5] — 2026-05-15 — bouracka-ui v0.1.5-dev5 (workbook_io readers + steps/evidence endpoints)
 
 **dev0 — not for Kate, not for SUPIN. Internal-only build for v0.1.5 development.**
