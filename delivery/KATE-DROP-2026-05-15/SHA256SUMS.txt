@@ -1,0 +1,6 @@
+0d5b57c12a22a5a86e0b49c3d9fa3c99e164cb08f9cde9b62d59a20ff0a28b7b  BOURACKA-TESTPLAN-v0.4.4.xlsx
+f3bb1d82652acc214298e6a3491813d1889f2a4568d8cb6d1dc60693afbf04be  bouracka-tests-source-v0.5.7.zip
+4caeb81786a72e7c8438b553f8cfb436b78fdd8996c231c70bc396a15eb44bf3  bouracka-ui-hp-elite-v0.1.5.dev5-CS-multi-abi.zip
+ce078475a9ea4b0e8e7e4851d2bbdce5a63878c267ba43ce1626a583a6ccb525  bouracka-ui-hp-elite-v0.1.5.dev5-EN-multi-abi.zip
+83a798fa70473009625d2f0aeeeae7022748ce71c24bb60e3fc1bd99b22a9228  KATE-FROM-ZERO-INSTALL-CS.md
+127d0c238bd59aa3143e01ad8aeb936751d44c250e1f08c3e6090e72a36eb2ea  KATE-V0.1.5-DELTA-CS.md
