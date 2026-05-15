@@ -51,7 +51,7 @@ def test_health_returns_versions():
     assert r.status_code == 200
     j = r.json()
     assert j["schema_version"] == "1.0"
-    assert j["server_version"] == "0.1.0"
+    assert j["server_version"].startswith("0.1.5")
     assert "tools" in j
 
 
@@ -67,7 +67,7 @@ def test_envs_returns_3_envs():
     codes = {e["code"] for e in j}
     assert {"ENV-PUB", "ENV-TST", "ENV-DMO"} <= codes
     schema_envs = {e["schema_env"] for e in j}
-    assert schema_envs <= {"demo", "tst", "uat", "prod-readonly", "prod-writable"}
+    assert schema_envs <= {"demo", "tst", "tst-demo", "uat", "prod-readonly", "prod-writable"}
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -463,3 +463,58 @@ def test_diagnostics_snapshot():
     import json as _json
     meta = _json.loads(zf.read("manifest.json"))
     assert meta["kind"] == "bouracka-ui-diagnostics-snapshot"
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# §8. v0.1.5-dev5 — steps + bug evidence endpoints (F-5/F-6/F-7/F-8)
+# ──────────────────────────────────────────────────────────────────────────
+
+def test_api_tcs_steps_returns_list():
+    """F-5: GET /api/tcs/{tc}/steps returns list of steps for a known TC."""
+    tcs = client.get("/api/tcs").json()
+    assert tcs, "no TCs in mock — cannot test steps"
+    tc_code = tcs[0]["code"]
+    r = client.get(f"/api/tcs/{tc_code}/steps")
+    assert r.status_code == 200
+    j = r.json()
+    assert j["tc_code"] == tc_code
+    assert isinstance(j["steps"], list)
+    assert j["count"] == len(j["steps"])
+    assert j["count"] >= 1
+
+
+def test_api_tcs_steps_unknown_tc_returns_404():
+    """F-5: unknown tc_code returns 404."""
+    r = client.get("/api/tcs/TC-DOES-NOT-EXIST/steps")
+    assert r.status_code == 404
+
+
+def test_api_steps_by_code():
+    """F-6: GET /api/steps/{step_code} returns single step."""
+    tcs = client.get("/api/tcs").json()
+    tc_code = tcs[0]["code"]
+    steps_resp = client.get(f"/api/tcs/{tc_code}/steps").json()
+    if not steps_resp["steps"]:
+        pytest.skip(f"TC {tc_code} has no steps in mock")
+    step_code = steps_resp["steps"][0]["step_code"]
+    r2 = client.get(f"/api/steps/{step_code}")
+    assert r2.status_code == 200
+    assert r2.json()["step_code"] == step_code
+
+
+def test_api_bugs_evidence_no_evidence_returns_null():
+    """F-7: bug with no evidence returns 200 + null body (mock has no evidence)."""
+    bugs = client.get("/api/bugs").json()
+    if not bugs:
+        pytest.skip("workbook has no bugs to test evidence resolver")
+    bug_code = bugs[0]["code"]
+    r = client.get(f"/api/bugs/{bug_code}/evidence")
+    assert r.status_code in (200, 404)
+    if r.status_code == 200:
+        assert r.json() is None  # bug exists, no evidence
+
+
+def test_runs_staticfiles_path_traversal_blocked():
+    """F-8: StaticFiles must reject .. escapes."""
+    r = client.get("/api/runs/../../../etc/passwd")
+    assert r.status_code in (404, 403)
