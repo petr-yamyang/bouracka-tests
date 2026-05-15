@@ -421,6 +421,277 @@ def test_empty_steps_summary_produces_placeholder(patched):
 
 
 # ---------------------------------------------------------------------------
+# §F-1m..§F-7m data migration tests (Brief #001b)
+# ---------------------------------------------------------------------------
+
+USER_DATA_FIXTURE = FIXTURES_DIR / "synthetic-v0.4.3-with-user-data.xlsx"
+
+
+@pytest.fixture()
+def patched_with_user_data(tmp_path, patcher):
+    """Patcher run with --source-data on synthetic user-data fixture."""
+    src = tmp_path / "src.xlsx"
+    dst = tmp_path / "dst.xlsx"
+    shutil.copy2(FIXTURES_DIR / "synthetic-v0.4.3-mini.xlsx", src)
+    rc = patcher.patch(src, dst, dry_run=False, verbose=False,
+                       source_data=USER_DATA_FIXTURE)
+    assert rc in (0, 1), f"Patcher returned {rc}"
+    wb = openpyxl.load_workbook(dst)
+    yield wb, src, dst
+    wb.close()
+
+
+def test_source_data_flag_default_off(tmp_path, patcher):
+    """Without --source-data, behavior identical to Brief #001 (data sheets unchanged)."""
+    src = tmp_path / "src.xlsx"
+    dst = tmp_path / "dst.xlsx"
+    shutil.copy2(FIXTURES_DIR / "synthetic-v0.4.3-mini.xlsx", src)
+    rc = patcher.patch(src, dst, dry_run=False, verbose=False)
+    assert rc in (0, 1)
+    wb = openpyxl.load_workbook(dst)
+    # 02e_TestSteps must exist (F-1)
+    assert "02e_TestSteps" in wb.sheetnames
+    # 08_Bugs should have original schema-source rows (BUG-SYN-001, BUG-SYN-002)
+    ws = wb["08_Bugs"]
+    cmap = _col_map(ws)
+    codes = [r[cmap["item_code"] - 1] for r in ws.iter_rows(min_row=2, values_only=True) if r[0]]
+    assert "BUG-SYN-001" in codes, "schema-source bugs must remain when no --source-data"
+    wb.close()
+
+
+def test_migrate_08_bugs_basic(tmp_path, patcher):
+    """source-data has 5 Kate bugs → dest 08_Bugs has exactly 5 rows."""
+    src = tmp_path / "src.xlsx"
+    dst = tmp_path / "dst.xlsx"
+    # Use a schema-source with 0 bugs (new empty sheet)
+    shutil.copy2(FIXTURES_DIR / "synthetic-v0.4.3-mini.xlsx", src)
+    # Clear bugs from schema-source copy
+    wb_src = openpyxl.load_workbook(str(src))
+    ws_b = wb_src["08_Bugs"]
+    for r in range(ws_b.max_row, 1, -1):
+        ws_b.delete_rows(r)
+    wb_src.save(str(src))
+    wb_src.close()
+
+    rc = patcher.patch(src, dst, dry_run=False, verbose=False,
+                       source_data=USER_DATA_FIXTURE)
+    assert rc in (0, 1)
+    wb = openpyxl.load_workbook(dst)
+    ws = wb["08_Bugs"]
+    data_rows = [r for r in ws.iter_rows(min_row=2, values_only=True) if r[0] is not None]
+    assert len(data_rows) == 5, f"Expected 5 bug rows, got {len(data_rows)}"
+    wb.close()
+
+
+def test_migrate_screenshot_ref_to_evidence_typed(patched_with_user_data):
+    """Bug with screenshot_ref in source-data → evidence_screenshot_path populated."""
+    wb, _, _ = patched_with_user_data
+    ws = wb["08_Bugs"]
+    cmap = _col_map(ws)
+    ss_col = cmap.get("screenshot_ref")
+    esp_col = cmap.get("evidence_screenshot_path")
+    eck_col = cmap.get("evidence_capture_kind")
+    assert ss_col and esp_col and eck_col
+
+    found = False
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if row[0] is None:
+            continue
+        ss_val = row[ss_col - 1]
+        esp_val = row[esp_col - 1]
+        eck_val = row[eck_col - 1]
+        if ss_val:
+            assert esp_val == ss_val, f"evidence_screenshot_path should mirror screenshot_ref"
+            assert eck_val == "manual-tester"
+            found = True
+    assert found, "No migrated bug row with screenshot_ref found"
+
+
+def test_migrate_06_test_runs_preserves_all_columns(patched_with_user_data):
+    """run_id, env, framework_targets from source-data present in dest 06_TestRuns."""
+    wb, _, _ = patched_with_user_data
+    ws = wb["06_TestRuns"]
+    cmap = _col_map(ws)
+    assert "run_id" in cmap, "run_id column missing from 06_TestRuns"
+    assert "env" in cmap, "env column missing"
+    run_ids = [r[cmap["run_id"] - 1] for r in ws.iter_rows(min_row=2, values_only=True)
+               if r[0] is not None]
+    assert "run-2026-05-10T08-00-00Z-aaaaaaa" in run_ids
+    assert "run-2026-05-11T09-00-00Z-ccccccc" in run_ids
+    assert len(run_ids) == 3
+
+
+def test_migrate_07_test_run_results_preserves_assertion_history(patched_with_user_data):
+    """All 5 result rows with verdict and parity_status preserved."""
+    wb, _, _ = patched_with_user_data
+    ws = wb["07_TestRunResults"]
+    cmap = _col_map(ws)
+    data_rows = [r for r in ws.iter_rows(min_row=2, values_only=True) if r[0] is not None]
+    assert len(data_rows) == 5, f"Expected 5 result rows, got {len(data_rows)}"
+    verdicts = [r[cmap["verdict"] - 1] for r in data_rows]
+    assert "pass" in verdicts
+    assert "fail" in verdicts
+
+
+def test_duplicate_run_id_in_source_data_halts(tmp_path, patcher):
+    """source-data 06_TestRuns with duplicate run_id → patcher exits with code 4."""
+    src = tmp_path / "src.xlsx"
+    dup_data = tmp_path / "dup_data.xlsx"
+    shutil.copy2(FIXTURES_DIR / "synthetic-v0.4.3-mini.xlsx", src)
+    shutil.copy2(USER_DATA_FIXTURE, dup_data)
+
+    # Inject a duplicate run_id into dup_data
+    wb_d = openpyxl.load_workbook(str(dup_data))
+    ws_r = wb_d["06_TestRuns"]
+    cmap = _col_map(ws_r)
+    # Append duplicate of first data row
+    first_row = next(r for r in ws_r.iter_rows(min_row=2, values_only=True) if r[0])
+    ws_r.append(list(first_row))
+    wb_d.save(str(dup_data))
+    wb_d.close()
+
+    rc = patcher.patch(src, tmp_path / "dst.xlsx", dry_run=False, verbose=False,
+                       source_data=dup_data)
+    assert rc == 4, f"Expected exit 4 for duplicate run_id, got {rc}"
+
+
+def test_data_source_omitted_then_provided_then_omitted_resets(tmp_path, patcher):
+    """Run without source-data, then with, then without → data wiped back to schema."""
+    src = tmp_path / "src.xlsx"
+    dst = tmp_path / "dst.xlsx"
+    shutil.copy2(FIXTURES_DIR / "synthetic-v0.4.3-mini.xlsx", src)
+
+    # Run 1: no source-data
+    patcher.patch(src, dst, dry_run=False, verbose=False)
+    wb1 = openpyxl.load_workbook(str(dst))
+    runs_1 = [r for r in wb1["06_TestRuns"].iter_rows(min_row=2, values_only=True) if r[0]]
+    wb1.close()
+
+    # Run 2: with source-data (Kate's data migrated)
+    patcher.patch(src, dst, dry_run=False, verbose=False, source_data=USER_DATA_FIXTURE)
+    wb2 = openpyxl.load_workbook(str(dst))
+    runs_2 = [r for r in wb2["06_TestRuns"].iter_rows(min_row=2, values_only=True) if r[0]]
+    wb2.close()
+    assert len(runs_2) == 3, "After --source-data, 3 runs expected"
+
+    # Run 3: source-data omitted again → data reset (runs cleared because schema-source has 0 runs)
+    patcher.patch(src, dst, dry_run=False, verbose=False)
+    wb3 = openpyxl.load_workbook(str(dst))
+    runs_3 = [r for r in wb3["06_TestRuns"].iter_rows(min_row=2, values_only=True) if r[0]]
+    wb3.close()
+    assert len(runs_3) == len(runs_1), "After omitting --source-data, runs should revert to schema-source state"
+
+
+def test_schema_sheets_NOT_overwritten_by_source_data(patched_with_user_data, tmp_path):
+    """02_TestCases from source-data NOT applied — dest gets schema-source content."""
+    wb_dst, src, _ = patched_with_user_data
+    ws_dst_tc = wb_dst["02_TestCases"]
+    # dest must have the schema-source TCs (TC-SYN-001, TC-SYN-002, TC-SYN-003)
+    cmap = _col_map(ws_dst_tc)
+    codes = [r[cmap["item_code"] - 1] for r in ws_dst_tc.iter_rows(min_row=2, values_only=True)
+             if r[0] is not None]
+    assert "TC-SYN-001" in codes
+    assert len(codes) == 3, f"Schema-source TCs must be preserved, got {codes}"
+
+
+def test_migrate_with_no_data_in_source_is_noop(tmp_path, patcher):
+    """source-data has 0 user rows → patcher succeeds, dest data sheets have 0 rows."""
+    src = tmp_path / "src.xlsx"
+    empty_data = tmp_path / "empty_data.xlsx"
+    dst = tmp_path / "dst.xlsx"
+    shutil.copy2(FIXTURES_DIR / "synthetic-v0.4.3-mini.xlsx", src)
+    # Create source-data with real headers but no data rows
+    shutil.copy2(FIXTURES_DIR / "synthetic-v0.4.3-mini.xlsx", empty_data)
+    wb_e = openpyxl.load_workbook(str(empty_data))
+    ws_b = wb_e["08_Bugs"]
+    for r in range(ws_b.max_row, 1, -1):
+        ws_b.delete_rows(r)
+    wb_e.save(str(empty_data))
+    wb_e.close()
+
+    rc = patcher.patch(src, dst, dry_run=False, verbose=False, source_data=empty_data)
+    assert rc in (0, 1)
+    wb = openpyxl.load_workbook(dst)
+    bugs = [r for r in wb["08_Bugs"].iter_rows(min_row=2, values_only=True) if r[0]]
+    assert len(bugs) == 0, f"Expected 0 bug rows after empty migration, got {len(bugs)}"
+    wb.close()
+
+
+def test_report_sections_9_through_12_present(tmp_path, patcher):
+    """PATCH-REPORT contains §9–§12 sections when --source-data used."""
+    src = tmp_path / "src.xlsx"
+    dst = tmp_path / "dst.xlsx"
+    shutil.copy2(FIXTURES_DIR / "synthetic-v0.4.3-mini.xlsx", src)
+    patcher.patch(src, dst, dry_run=False, verbose=False, source_data=USER_DATA_FIXTURE)
+
+    reports = sorted(
+        (pathlib.Path(__file__).resolve().parent.parent / "patcher-reports")
+        .glob("PATCH-REPORT-v0.4.3-to-v0.4.4-*.md")
+    )
+    assert reports, "No PATCH-REPORT found"
+    text = reports[-1].read_text(encoding="utf-8")
+    assert "## §9 Data migration summary" in text
+    assert "## §10" in text
+    assert "## §11" in text
+    assert "## §12" in text
+
+
+@pytest.mark.integration
+def test_kate_realistic_scenario(tmp_path, patcher):
+    """Synthetic Kate workbook: 5 bugs + 3 runs + 5 results → migrated + schema intact."""
+    src = tmp_path / "src.xlsx"
+    dst = tmp_path / "dst.xlsx"
+    shutil.copy2(FIXTURES_DIR / "synthetic-v0.4.3-mini.xlsx", src)
+
+    rc = patcher.patch(src, dst, dry_run=False, verbose=True, source_data=USER_DATA_FIXTURE)
+    assert rc in (0, 1), f"Patcher returned {rc}"
+
+    wb = openpyxl.load_workbook(str(dst))
+
+    # Schema in place
+    assert "02e_TestSteps" in wb.sheetnames
+    assert _col_map(wb["08_Bugs"]).get("evidence_screenshot_path") is not None
+
+    # Bugs migrated
+    bugs = [r for r in wb["08_Bugs"].iter_rows(min_row=2, values_only=True) if r[0]]
+    assert len(bugs) == 5
+    bug_codes = [r[_col_map(wb["08_Bugs"])["item_code"] - 1] for r in bugs]
+    assert "BUG-KATE-001" in bug_codes
+
+    # Runs migrated
+    runs = [r for r in wb["06_TestRuns"].iter_rows(min_row=2, values_only=True) if r[0]]
+    assert len(runs) == 3
+
+    # Results migrated
+    results = [r for r in wb["07_TestRunResults"].iter_rows(min_row=2, values_only=True) if r[0]]
+    assert len(results) == 5
+
+    # Idempotency: second run produces same data rows
+    dst2 = tmp_path / "dst2.xlsx"
+    rc2 = patcher.patch(src, dst2, dry_run=False, verbose=False, source_data=USER_DATA_FIXTURE)
+    assert rc2 in (0, 1)
+    wb2 = openpyxl.load_workbook(str(dst2))
+    bugs2 = [r for r in wb2["08_Bugs"].iter_rows(min_row=2, values_only=True) if r[0]]
+    assert len(bugs2) == len(bugs), "Idempotency failure: bug count differs on second run"
+    wb.close()
+    wb2.close()
+
+    # Print §9 block (for return checklist §10 requirement)
+    reports = sorted(
+        (pathlib.Path(__file__).resolve().parent.parent / "patcher-reports")
+        .glob("PATCH-REPORT-v0.4.3-to-v0.4.4-*.md")
+    )
+    if reports:
+        text = reports[-1].read_text(encoding="utf-8")
+        # Extract §9 through §10
+        start = text.find("## §9")
+        end = text.find("## §11")
+        if start >= 0 and end >= 0:
+            print("\n--- PATCH-REPORT §9 (data migration summary) ---")
+            print(text[start:end].strip())
+
+
+# ---------------------------------------------------------------------------
 # Integration test — real workbook
 # ---------------------------------------------------------------------------
 

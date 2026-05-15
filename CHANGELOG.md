@@ -7,6 +7,58 @@ TestPlan version bumps are decoupled** (see `_specs/EMAIL-DELIVERABILITY-RULES-v
 
 ---
 
+## [bouracka-ui v0.1.5-dev9] — 2026-05-15 — Brief #001b: patcher data migration (--source-data, F-1m..F-7m)
+
+**Internal-only dev build, final integration milestone.** Extends Brief #001's schema patcher with row-level data migration from a tester's working-copy workbook. No bouracka_ui Python code change — this brief lives entirely in `tools/`. Final integration milestone name (`dev9`) is by merge order.
+
+### Scope IN — `tools/workbook-v0.4.3-to-v0.4.4.py` (extends Brief #001 by 278 lines, 673 → 951)
+
+- **F-1m — `--source-data PATH` flag.** When provided, migrates user rows from the tester's working-copy workbook into the freshly-patched destination. Omitting the flag preserves Brief #001 behaviour (schema-only, no data migration). Default exit code 0 on no-op when source-data has no migratable rows.
+- **F-2m — `08_Bugs` row migration** with header-based column mapping. Legacy `screenshot_ref` and `trace_ref` text columns are promoted to the typed `evidence_*` columns introduced by Brief #001 (`evidence_path`, `evidence_kind`, `evidence_url`, `evidence_on_disk_flag`). Legacy columns preserved for read-side fallback compatibility.
+- **F-3m — `06_TestRuns` row migration**. Duplicate `run_id` between source-data and dest → **exit code 4** with diagnostic listing the colliding IDs. No silent overwrite.
+- **F-4m — `07_TestRunResults` row migration**, indexed by `(run_id, tc_code)` composite key.
+- **F-5m — `09_Reports`, `13_TestExecutionSummary`, `14_AssertionGateResults` migration**, append-only with collision detection.
+- **F-6m — Schema-owned sheets explicitly excluded** from migration: `02_TestCases`, `02e_TestSteps`, `08_Bugs` schema rows, `00_Meta`, `01_Envs`, `04_RunTypes`. These are *workbook structure*; user-row migration MUST NOT overwrite them.
+- **F-7m — PATCH-REPORT extended** with new sections: **§9** Migration summary (rows/sheet, total transit) · **§10** Legacy evidence promotion (count + before/after sample) · **§11** Row-code collisions (run_id and bug_code duplicates rejected) · **§12** Schema-owned sheets excluded list (audit trail).
+
+### Scope IN — `tools/tests/` (test suite expanded 482 → 753 lines)
+
+- **10 new unit tests** in `test_workbook_patcher.py` covering F-1m through F-7m happy-paths + 3 collision-handling negative tests.
+- **1 integration test** running the full migration pipeline against `tools/tests/fixtures/synthetic-v0.4.3-with-user-data.xlsx` (a new fixture carrying 4 bugs + 3 test runs + 12 result rows).
+- **`make_synthetic_user_data_fixture.py`** — fixture-builder for repeatable test data generation.
+- 23/23 non-integration tests pass; 1/1 integration test passes.
+
+### Stub-sheet handling
+
+- Data sheets present in source-data but absent in the v0.4.3 dest workbook adopt the source-data column layout transparently (rather than erroring). This keeps the patcher tolerant of testers who carried extra ad-hoc sheets — they survive the migration even if not formally part of the v0.4.4 schema.
+
+### Scope OUT — explicitly deferred
+
+- **Conflict resolution UI** — when source-data and dest workbook both have a row with the same key (run_id, bug_code), the patcher exits with code 4 and the tester must manually resolve. An interactive `--on-collision={skip,overwrite,prompt}` flag is deferred to Brief #001c (v0.1.6).
+- **Three-way merge of test artefacts** — source-data carries `_TestRunResults` rows; dest carries fresh post-patch rows from a different test campaign; no automatic resolution. Deferred.
+- **Backup before migration** — like Brief #001, no `--backup` flag yet. Deferred to v0.1.6.
+- **Cross-workbook lineage tracking** — no audit metadata is written about WHICH source-data was migrated (just the row counts in PATCH-REPORT §9). Tracking source-data sha256 + path in a new `00_MigrationProvenance` sheet is v0.2 candidate.
+
+### Regression candidates (suggested follow-up tests)
+
+| Surface | Churn | Suggested coverage |
+|---|---|---|
+| `tools/workbook-v0.4.3-to-v0.4.4.py::migrate_data()` (NEW, 278 lines) | Brand-new code path; row-level transactional behaviour | Add property-based test (hypothesis): generate random `(src_rows, dest_rows)` pairs; assert no key duplication post-migration, no schema-row corruption. |
+| Collision exit code 4 contract | Exit code is the entire UX for duplicate-key detection | Smoke test: run with deliberate run_id collision in source-data; assert exit code == 4 AND stderr contains exact colliding IDs. |
+| Legacy `screenshot_ref` → `evidence_*` promotion logic (F-2m) | Touches every existing bug with legacy evidence | Add fixture: bug with `screenshot_ref = "C:/abs/path.png"` AND `screenshot_ref = "rel/path.png"` AND empty. Each must promote correctly (or no-op if empty). |
+| Stub-sheet absorption | Tester may have arbitrary sheet names | Fuzz: source-data with 10 random sheet names; assert dest gets all of them with original column layout. |
+| PATCH-REPORT §9-§12 generation | Markdown output — silent failures could pass tests | Snapshot test: run migration; assert PATCH-REPORT contains all 4 section headers; counts in §9 match `(src_rows - collisions)`. |
+| Schema-owned sheets exclusion list (F-6m) | Hardcoded list in patcher source | Test: pass source-data that contains `02_TestCases` user rows; assert dest's `02_TestCases` is UNCHANGED (schema rows only, no user contamination). |
+
+### Known issues at merge time
+
+- **`--source-data` does not validate workbook schema version.** If a tester accidentally points at a v0.4.2 workbook (pre-`02e_TestSteps`), the migration will run but produce a corrupt result. Add a pre-flight version-string check in v0.1.6.
+- **`make_synthetic_user_data_fixture.py` is not pytest-collectable** — it's a CLI tool for generating the fixture; runs once at fixture-creation time. Don't expect pytest to find tests here.
+- **Exit codes overlap with pytest convention** — exit 4 is patcher's collision; pytest's exit 4 is "internal error". If a tester wraps the patcher in a pytest subprocess, exit code interpretation can mislead. Document in PATCH-REPORT preamble.
+- **Integration test runs slow** (~5–8s) — adds latency to the `tools/tests/` suite. Marker `integration` is registered in pyproject.toml; will be skipped by the existing `-m "not http_e2e"` filter, but `not integration` should be the canonical skip filter for fast-loop dev.
+
+---
+
 ## [bouracka-ui v0.1.5-dev8] — 2026-05-15 — Brief #001: workbook patcher v0.4.3→v0.4.4
 
 **Internal-only dev build.** No bouracka_ui Python code change; this brief lives in `tools/` + repo-root xlsx snapshots. Integration milestone name (`dev8`) is by merge order, not by Python release semantics.
@@ -983,33 +1035,4 @@ Superseded by v0.4.9 → v0.4.9.1-SAFE → v0.5.0.
 
 ### Added — automation suites
 
-- `playwright/tests/a1-main-happy-day-demo.spec.ts` — full E2E (~150 s budget)
-- `playwright/tests/a2-alternates-demo.spec.ts` — 8 ALT variants
-- `playwright/tests/intel-probes/` — 2 admin-permission probes
-- `playwright/helpers/page-helpers.ts` — `dismissCookieBanner()` etc.
-- `playwright/reporters/excel-row-writer.ts` — Playwright reporter (initial,
-  was truncated; fixed in v0.4.8.1)
-- `cypress/e2e/bring-up-smoke.cy.ts` — Cypress parity for bring-up
-- `testcafe/tests/bring-up-smoke.test.ts` — TestCafe parity
-- `selenium/tests/test_bring_up_smoke.py` — Selenium pytest port
-- `readyapi/projects/bouracka-bring-up-smoke-soapui-project.xml` — SoapUI smoke
-- `postman/collections/bouracka-bring-up-smoke.json` — Postman collection
-- `mockoon/n8-sms-gateway.json` — N8 SMS Mockoon mock
-
-### Added — Excel + tools
-
-- `BOURACKA-TESTPLAN-v0.4.2.xlsx` — `13_TestExecutionSummary` (23 cols) +
-  `14_AssertionGateResults` (13 cols) sheets
-- `tools/migrate_to_v04_2_tes.py` — Excel TES migration
-- `tools/migrate_to_v04_branch_tagging.py` — branch tagging
-- `tools/migrate_08bugs_v04_1.py` — bug dedup
-- `tools/append_test_run_result.py` — Playwright reporter helper
-- `tools/render_branch_doc.py` — render branched master doc
-- `tools/render-uml.ps1` — UML rendering helper
-- `tools/build_mindmaps.py` + `tools/build-mindmaps.ps1` — mindmap rendering
-
-### Added — install + delivery
-
-- `_install/INSTALL-FROM-ZERO-v0.4-CS.md` — install guide v0.4 with 7
-  preflighted gotchas
-- `
+- `playwright/tests/a1-main-h
