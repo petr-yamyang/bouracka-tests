@@ -7,6 +7,34 @@ TestPlan version bumps are decoupled** (see `_specs/EMAIL-DELIVERABILITY-RULES-v
 
 ---
 
+## [v0.5.7] — 2026-05-15 — patcher v0.4.3→v0.4.4 row-level data migration (Brief #001b)
+
+### Added — `tools/workbook-v0.4.3-to-v0.4.4.py` (extends Brief #001)
+
+- **`--source-data PATH`** flag (F-1m): when provided, migrates user rows from
+  tester's working copy into the freshly-patched dest workbook. Omitting the flag
+  preserves Brief #001 behavior (schema-only, no data migration).
+- **F-2m** Migrate `08_Bugs` rows (header-based column mapping; legacy
+  `screenshot_ref`/`trace_ref` promoted to typed `evidence_*` columns).
+- **F-3m** Migrate `06_TestRuns` rows; duplicate `run_id` → exit code 4.
+- **F-4m/F-5m** Migrate `07_TestRunResults`, `09_Reports`,
+  `13_TestExecutionSummary`, `14_AssertionGateResults`.
+- **F-6m** Schema-owned sheets (`02_TestCases`, `02e_TestSteps`, etc.) are
+  never overwritten from source-data.
+- **F-7m** PATCH-REPORT extended with §9 (migration summary) · §10 (legacy
+  evidence) · §11 (row-code collisions) · §12 (schema-only sheets).
+- Stub-sheet handling: data sheets with no real schema in schema-source adopt
+  source-data's column layout transparently.
+- 10 new unit tests + 1 integration test; all 23 non-integration tests pass.
+
+### Added — `tools/tests/fixtures/`
+
+- `synthetic-v0.4.3-with-user-data.xlsx` — "Kate's workbook": 5 bugs, 3 runs,
+  5 results, 1 report, 1 TES row, 2 assertion gate rows.
+- `make_synthetic_user_data_fixture.py` — generator script.
+
+---
+
 ## [v0.5.5] — 2026-05-10 — bouracka-ui v0.1.0 (presentation-layer UI + HP Elite air-gap workflow)
 
 ### Added — `bouracka_ui/` package (separate Python wheel)
