@@ -518,3 +518,37 @@ def test_runs_staticfiles_path_traversal_blocked():
     """F-8: StaticFiles must reject .. escapes."""
     r = client.get("/api/runs/../../../etc/passwd")
     assert r.status_code in (404, 403)
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# §9. /api/runs/{rid}/cross-check — FR-K-007 (Brief #007)
+# ──────────────────────────────────────────────────────────────────────────
+
+def test_cross_check_json_returns_structure(sample_run_envelope):
+    """GET /api/runs/{rid}/cross-check → JSON with agreement_summary + tc_full_matrix."""
+    rid, _, _ = sample_run_envelope
+    r = client.get(f"/api/runs/{rid}/cross-check")
+    assert r.status_code == 200, r.text
+    j = r.json()
+    assert j["run_id"] == rid
+    assert "agreement_summary" in j
+    assert "tc_full_matrix" in j
+    assert "divergent_tcs" in j
+    assert isinstance(j["tc_full_matrix"], list)
+    assert j["total_tcs"] >= 1
+
+
+def test_cross_check_html_returns_html_page(sample_run_envelope):
+    """GET /api/runs/{rid}/cross-check.html → HTML page with agreement content."""
+    rid, _, _ = sample_run_envelope
+    r = client.get(f"/api/runs/{rid}/cross-check.html")
+    assert r.status_code == 200, r.text
+    assert "text/html" in r.headers["content-type"]
+    assert "Cross-framework check" in r.text
+    assert rid in r.text
+
+
+def test_cross_check_unknown_run_id_returns_404():
+    """Unknown run_id → 404 for cross-check endpoint."""
+    r = client.get("/api/runs/run-2026-01-01T00-00-00Z-deadbeef/cross-check")
+    assert r.status_code == 404

@@ -7,6 +7,47 @@ TestPlan version bumps are decoupled** (see `_specs/EMAIL-DELIVERABILITY-RULES-v
 
 ---
 
+## [bouracka-ui v0.1.5-dev7] — 2026-05-15 — Brief #007: cross-framework check report (FR-K-007)
+
+**Internal-only dev build.** Promoted from cp-supin-15's "v0.5.6 / dev5" naming to "v0.1.5-dev7" milestone slot for chronological clarity in the integration branch. bouracka_ui Python code version stays `0.1.5.dev5` (no version bump in pyproject); integration milestone naming uses merge order.
+
+### Scope IN — `bouracka_ui/` cross-check endpoints (FR-K-007)
+
+- **`GET /api/runs/{run_id}/cross-check`** — returns cross-framework agreement projection as JSON. Fields: `agreement_summary` · `divergent_tcs` · `tc_full_matrix`. Computed by `build_cross_check()` over the completed run envelope.
+- **`GET /api/runs/{run_id}/cross-check.html`** — standalone HTML cross-check report. Inline CSS, no external deps, collapsible full-matrix table. Designed to be saved/shared as a static deliverable.
+- **`_find_envelope_for_run(run_id)`** server helper — walks `runs/` for the matching `cross-framework-*.json` envelope. Shared by both new endpoints. Returns `None` → 404 in the routes.
+- **`cross_check.py`** Opus prototype promoted from `_specs/` to tracked module under `bouracka_ui/bouracka_ui/` (unchanged code; module path normalisation only).
+- **`test_cross_check.py`** — 11-test unit suite added.
+- **`dispatcher.py`** — `tst-demo` added to `ENV_TO_BASE_URL` (was previously colliding under ambiguous `demo` key). Required for `test_cross_check::test_top_level_fields` coverage.
+- **`test_smoke.py`** — 3 new tests added: cross-check JSON structure, HTML render, 404 on unknown run_id. Smoke suite now: 33 → 36 tests; combined with `test_cross_check.py` (11) and `test_mock_dispatch_e2e.py` (13) the bouracka_ui test corpus reaches ~60 tests.
+
+### Regression fixed in this merge (M3 carry-over)
+
+- **`[tool.pytest.ini_options]` markers section restored in `pyproject.toml`** — M3's wholesale take of cp-supin-17's pyproject inadvertently dropped the `http_e2e` + `integration` marker declarations originally added by Brief #005. Resulted in `PytestUnknownMarkWarning` in M3/M4 test runs. Markers re-registered. No behavioural change; warning will disappear.
+
+### Scope OUT — explicitly deferred
+
+- **`cross_check.py` algorithm review** — Opus prototype is being promoted as-is. Full algorithmic audit (BUG-K-013 candidate territory: divergence detection corner-cases, soft-pass classification) deferred to v0.1.6 with cross-check.py v0.2.
+- **UI surfacing** — `/api/runs/{rid}/cross-check.html` exists but is not yet linked from the main `/results/{rid}` SPA page. UI wiring deferred; current consumption is direct URL or via the JSON endpoint by downstream tools.
+- **bouracka-ui version bump** — no Python code version bump (`pyproject.toml::version` stays `0.1.5.dev5`); integration milestone naming `v0.1.5-dev7` is informational only, tracks merge order not Python release semantics.
+
+### Regression candidates (suggested follow-up tests)
+
+| Surface | Churn | Suggested coverage |
+|---|---|---|
+| `cross_check.py` (Opus prototype, NEW tracked module) | Imported into `server.py`; called for every `/cross-check` request | Unit tests for `build_cross_check()` corner cases: empty envelope, single-framework runs, all-divergent matrix, all-agreement matrix. Use 11-test suite in `test_cross_check.py` as floor — add 4 corner-case tests. |
+| `dispatcher.py::ENV_TO_BASE_URL` (modified) | Now used by both run trigger AND cross-check test fixtures | Test: assert `ENV_TO_BASE_URL.keys() == workbook_io.ENV_CODE_TO_SCHEMA.keys()` to catch future env-key drift between dispatcher and workbook_io. |
+| `server.py::_find_envelope_for_run()` (NEW) | Walks `runs/` filesystem; pattern-matches `cross-framework-*.json` | Test: unknown run_id → 404; ambiguous match (two envelopes for same run_id) → 500 with diagnostic; corrupt envelope JSON → 422 with error detail. Currently only happy path is covered. |
+| `cross-check.html` template | Inline CSS, no test for HTML structure | Smoke test: GET endpoint, parse as HTML5, assert presence of `<table class="cross-check-matrix">`, assert no `<script src=` (no external deps). |
+
+### Known issues at merge time
+
+- **HTML report is inline-CSS only** — no print stylesheet, no dark-mode handling. Acceptable for v0.1.5 dev shipping; Kate's UI review of cross-check report is FR-K-008 (separate brief).
+- **No pagination on full-matrix table** — runs with >100 TCs will produce visually large HTML. Defer to FR-K-009.
+- The 2 `PytestUnraisableExceptionWarning` from previous merges remain (asyncio transport cleanup on Windows + Python 3.10 in FastAPI TestClient teardown). Pre-existing, unrelated to FR-K-007. Logging here for final integration release notes consolidation.
+
+---
+
 ## [bouracka-ui v0.1.5-dev6] — 2026-05-15 — Brief #006: integration probe harness expansion
 
 **Internal-only dev build — no Kate/SUPIN ship yet.** Recon-harness scope only; bouracka_ui Python code untouched (still dev5 in `pyproject.toml`). Integration milestone naming uses the merge order.
@@ -923,42 +964,4 @@ Superseded by v0.4.9 → v0.4.9.1-SAFE → v0.5.0.
 
 - `_install/INSTALL-FROM-ZERO-v0.4-CS.md` — install guide v0.4 with 7
   preflighted gotchas
-- `_install/SECOPS-COMPONENTS-CS.md` — extensive 13-section CS audit doc
-
-### Shipped
-
-- `bouracka-automation-v0.4.7.zip` — 1.72 MB
-
----
-
-## Earlier — see git history once initialized
-
-- v0.4.6 — morning DEMO Bouracka
-- v0.4.5 — consolidated email-ready package
-- v0.4.4 — first GH Actions-friendly variant
-- v0.4.3, v0.4.2, v0.4.1, v0.4.0 — Excel schema migrations + branch tagging
-- v0.3.x — CP-SUPIN-03 closure (validator, Mockoon, code-gen)
-- v0.2 — Excel v0.1→v0.2 schema migration
-- v0.1 — initial scaffold (CP-SUPIN-02)
-
----
-
-## Versioning policy
-
-- **Test kit** `bouracka-tests-vX.Y.Z` bumps on source code, scripts,
-  fixtures, install tooling, doc, packaging, bugfix changes
-- **Excel TestPlan** `BOURACKA-TESTPLAN-vX.Y.Z.xlsx` bumps **only** on schema
-  changes (sheets, columns, naming conventions, priority matrix, TT/TC
-  enumeration)
-
-Mapping table maintained in `_specs/EMAIL-DELIVERABILITY-RULES-v0.1-CS.md` §6.3.
-
-## Pre-ship gate
-
-Before any email-bound release:
-
-```cmd
-py tools/preship_audit.py path/to/bouracka-tests-vX.Y.Z.zip
-```
-
-Must return PASS. See `_specs/EMAIL-DELIVERABILITY-RULES-v0.1-CS.md`.
+- `
