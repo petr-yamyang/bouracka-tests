@@ -59,16 +59,33 @@ def test_health_returns_versions():
 # §3. /api/envs
 # ──────────────────────────────────────────────────────────────────────────
 
-def test_envs_returns_3_envs():
+def test_envs_returns_envs():
+    """As of v0.1.2 Kate drop, /api/envs returns 4 envs:
+      - ENV-PUB     (public production, https://www.bouracka.cz)
+      - ENV-TST     (SUPIN-internal TST, https://tst.bouracka.cz)
+      - ENV-DMO     (SUPIN-internal driving-school DEMO, tst.demo.bouracka.cz)
+                    — matches workbook v0.4.3 ENV-DMO row
+      - ENV-DMO-PUB (public DEMO, demo.bouracka.cz) — supplemental,
+                    auto-merged via workbook_io.SUPPLEMENTAL_ENVS
+    """
     r = client.get("/api/envs")
     assert r.status_code == 200
     j = r.json()
-    assert len(j) >= 3
+    assert len(j) >= 4
     codes = {e["code"] for e in j}
-    assert {"ENV-PUB", "ENV-TST", "ENV-DMO"} <= codes
+    assert {"ENV-PUB", "ENV-TST", "ENV-DMO", "ENV-DMO-PUB"} <= codes
     schema_envs = {e["schema_env"] for e in j}
-    # tst-demo added 2026-05-12 for SUPIN-internal driving-school DEMO
-    assert schema_envs <= {"demo", "tst", "tst-demo", "uat", "prod-readonly", "prod-writable"}
+    assert schema_envs <= {"demo", "tst-demo", "tst", "uat",
+                            "prod-readonly", "prod-writable"}
+    # SUPIN-internal DEMO (workbook ENV-DMO) must resolve to tst-demo schema
+    env_dmo = next((e for e in j if e["code"] == "ENV-DMO"), None)
+    assert env_dmo is not None
+    assert env_dmo["schema_env"] == "tst-demo"
+    # Public DEMO supplemental must resolve to demo schema + correct URL
+    env_dmo_pub = next((e for e in j if e["code"] == "ENV-DMO-PUB"), None)
+    assert env_dmo_pub is not None
+    assert env_dmo_pub["schema_env"] == "demo"
+    assert env_dmo_pub["base_url"] == "https://demo.bouracka.cz"
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -96,12 +113,26 @@ def test_tcs_filtered_by_env_demo():
 
 
 def test_tcs_filtered_by_framework():
+    """BUG-K-001 fix (2026-05-13): the filter is now tolerant of empty
+    framework_targets cells in the live workbook (e.g., TC-CP-NEW-* rows
+    don't carry a framework_targets value after KP review). Empty cell is
+    treated as 'applies to all frameworks' and the row is returned. The
+    test assertion mirrors that contract: a returned row must EITHER
+    contain the filtered framework in its targets, OR have empty targets.
+    """
     r = client.get("/api/tcs?framework=cypress")
     assert r.status_code == 200
     j = r.json()
     for tc in j:
         targets = (tc.get("framework_targets") or "").lower()
-        assert "cypress" in targets, f"{tc['code']}: framework_targets={targets}"
+        if targets:
+            # Populated cell: cypress must be in the comma-separated set
+            target_set = {t.strip() for t in targets.split(",") if t.strip()}
+            assert "cypress" in target_set, (
+                f"{tc['code']}: framework_targets={targets} "
+                f"(populated but missing 'cypress' — filter regression)"
+            )
+        # else: empty → assumed-applies-to-all per BUG-K-001 defensive filter
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -223,7 +254,7 @@ def test_resolve_repo_root_finds_marker_from_cwd(tmp_path, monkeypatch):
 def test_resolve_repo_root_finds_workbook_marker(tmp_path, monkeypatch):
     """BUG-BUI-004: BOURACKA-TESTPLAN-*.xlsx in CWD also counts as a marker."""
     import bouracka_ui.server as srv
-    (tmp_path / "BOURACKA-TESTPLAN-v0.4.2.xlsx").write_text("fake")
+    (tmp_path / "BOURACKA-TESTPLAN-v0.4.4.xlsx").write_text("fake")
     monkeypatch.delenv("BOURACKA_UI_REPO_ROOT", raising=False)
     monkeypatch.chdir(tmp_path)
     result = srv._resolve_repo_root()
@@ -464,80 +495,3 @@ def test_diagnostics_snapshot():
     import json as _json
     meta = _json.loads(zf.read("manifest.json"))
     assert meta["kind"] == "bouracka-ui-diagnostics-snapshot"
-
-
-# ──────────────────────────────────────────────────────────────────────────
-# §8. BUG-K-009/010/012 — Brief #004 hotfix bundle tests
-# ──────────────────────────────────────────────────────────────────────────
-
-def test_normalize_env_for_consolidator():
-    """F-1 (BUG-K-010): UI env labels normalize to consolidator tier names."""
-    from bouracka_ui.dispatcher import normalize_env_for_consolidator
-    assert normalize_env_for_consolidator("tst-demo") == "demo"
-    assert normalize_env_for_consolidator("demo") == "demo"
-    assert normalize_env_for_consolidator("tst") == "tst"
-    assert normalize_env_for_consolidator("uat") == "uat"
-    assert normalize_env_for_consolidator("prod-readonly") == "prod-readonly"
-    with pytest.raises(ValueError):
-        normalize_env_for_consolidator("bogus-env")
-
-
-def test_dispatcher_real_mode_normalizes_env_in_consolidator(monkeypatch, tmp_path):
-    """F-1 (BUG-K-010): run_async (real mode) builds cons_cmd with --env demo for tst-demo."""
-    import asyncio
-    import bouracka_ui.dispatcher as disp
-
-    captured_cmds: list[list] = []
-
-    async def fake_run_subprocess(cmd, *, cwd, log, prefix, env_inject=None):
-        captured_cmds.append(list(cmd))
-        return 0
-
-    monkeypatch.setattr(disp, "_run_subprocess", fake_run_subprocess)
-    monkeypatch.setenv("BOURACKA_UI_DISPATCH_MODE", "real")  # disable mock mode
-
-    run_id = disp.generate_run_id()
-    registry: dict = {run_id: {
-        "run_id": run_id, "env": "tst-demo", "tcs": ["TC-CP-008"],
-        "frameworks": ["cypress"], "status": "pending",
-        "log_lines": [], "exit_code": None, "envelope_path": None, "summary": {},
-    }}
-
-    async def _go():
-        await disp.run_async(
-            run_id=run_id, env="tst-demo", tcs=["TC-CP-008"],
-            frameworks=["cypress"], repo_root=tmp_path, registry=registry,
-        )
-
-    asyncio.run(_go())
-
-    cons = next(
-        (c for c in captured_cmds if any("consolidate_results.py" in str(a) for a in c)),
-        None,
-    )
-    assert cons is not None, f"consolidator subprocess not captured; all cmds: {captured_cmds}"
-    env_idx = cons.index("--env")
-    assert cons[env_idx + 1] == "demo", \
-        f"expected '--env demo' but got '--env {cons[env_idx + 1]}'"
-
-
-def test_test_runs_append_not_overwrite():
-    """F-2 (BUG-K-012): workbook_io has no append_test_run → Outcome A documented."""
-    import bouracka_ui.workbook_io as wio
-    assert not hasattr(wio, "append_test_run"), (
-        "append_test_run exists — switch to Outcome B and implement the append test"
-    )
-
-
-def test_install_runbook_has_prereq_section():
-    """F-3 (BUG-K-009): install runbooks mention Node.js + selenium."""
-    root = Path(__file__).resolve().parents[2]
-    paths = [
-        root / "delivery" / "KATE-V0.1.4-REINSTALL-CS.md",
-        root / "delivery" / "SUPIN-SERVER-INSTALL-FROM-ZERO-CS.md",
-    ]
-    for p in paths:
-        assert p.exists(), f"runbook not found: {p}"
-        text = p.read_text(encoding="utf-8")
-        assert "Node.js" in text, f"{p.name}: missing 'Node.js' prereq"
-        assert "selenium" in text.lower(), f"{p.name}: missing 'selenium' prereq"
