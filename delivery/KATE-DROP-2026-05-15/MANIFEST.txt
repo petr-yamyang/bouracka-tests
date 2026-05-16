@@ -1,13 +1,13 @@
 ﻿
-Name                                                Length LastWriteTime      
-----                                                ------ -------------      
-BOURACKA-TESTPLAN-v0.4.4.xlsx                        99914 15.05.2026 15:40:52
-bouracka-tests-source-v0.5.7.zip                   1524087 16.05.2026 13:03:19
-bouracka-ui-hp-elite-v0.1.5.dev5-CS-multi-abi.zip 11896679 16.05.2026 13:03:14
-bouracka-ui-hp-elite-v0.1.5.dev5-EN-multi-abi.zip 11894217 16.05.2026 13:03:14
-KATE-FROM-ZERO-INSTALL-CS.md                         12984 13.05.2026 14:39:24
-KATE-V0.1.5-DELTA-CS.md                               9157 15.05.2026 16:15:36
-MANIFEST.txt                                             0 16.05.2026 13:03:20
-SHA256SUMS.txt                                         618 16.05.2026 13:03:20
+Name                                           Length LastWriteTime      
+----                                           ------ -------------      
+BOURACKA-TESTPLAN-v0.4.4.xlsx                   99914 15.05.2026 15:40:52
+bouracka-tests-source-v0.5.7.zip              1524087 16.05.2026 13:03:19
+bouracka-ui-hp-elite-v0.1.5-CS-multi-abi.zip 11896605 16.05.2026 20:30:46
+bouracka-ui-hp-elite-v0.1.5-EN-multi-abi.zip 11894138 16.05.2026 20:30:45
+KATE-FROM-ZERO-INSTALL-CS.md                    15117 16.05.2026 19:28:57
+KATE-V0.1.5-DELTA-CS.md                          9157 15.05.2026 16:15:36
+MANIFEST.txt                                        0 16.05.2026 20:30:46
+SHA256SUMS.txt                                    608 16.05.2026 20:30:46
 
 
