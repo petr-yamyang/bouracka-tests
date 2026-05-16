@@ -24,7 +24,7 @@ pip install -e ".[dev]"
 
 # Option 2 — wheel install for distribution to testers
 python -m build
-pip install dist/bouracka_ui-0.1.0-py3-none-any.whl
+pip install dist/bouracka_ui-0.1.2-py3-none-any.whl
 ```
 
 ## Run
@@ -39,7 +39,7 @@ CLI options:
 
 ```
 bouracka-ui --port 8424 \
-            --workbook ../BOURACKA-TESTPLAN-v0.4.2.xlsx \
+            --workbook ../BOURACKA-TESTPLAN-v0.4.3.xlsx \
             --runs-dir  ../runs \
             --no-browser
 ```
@@ -55,7 +55,7 @@ existing scripts:
   - npx cypress run / npx playwright test / pytest selenium/tests/
   - python tools/consolidate_results.py
     ↕ openpyxl read-only
-BOURACKA-TESTPLAN-v0.4.2.xlsx
+BOURACKA-TESTPLAN-v0.4.3.xlsx   (KP-reviewed primary, since 2026-05-11)
     (only 08_Bugs sheet is appended — for "+ New Bug")
 ```
 

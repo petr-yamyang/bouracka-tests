@@ -1,5 +1,5 @@
 {
-  "id": "ENV-DMO",
+  "id": "ENV-TST-DMO",
   "label": "tst-demo",
   "base_url": "https://tst.demo.bouracka.cz",
   "network_reach": "supin-internal",

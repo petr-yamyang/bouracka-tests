@@ -44,12 +44,18 @@ function loadYaml(filePath: string): any {
 
 const TST = "https://tst.bouracka.cz";
 const TST_DEMO = "https://tst.demo.bouracka.cz";
+const DEMO = "https://demo.bouracka.cz";
 const PUBLIC = "https://www.bouracka.cz";
 
+// BOURACKA_ENV → baseUrl mapping. Schema codes match dispatcher.ENV_TO_BASE_URL
+// and workbook_io.ENV_CODE_TO_SCHEMA so the UI/dispatcher/Cypress agree.
+// 2026-05-12 Kate drop: added explicit 'demo' branch (was previously falling
+// through to BOURACKA_BASE fallback which made env switching opaque).
 const env = (process.env.BOURACKA_ENV ?? "public").toLowerCase();
 const baseUrl =
   env === "tst" ? TST :
   env === "tst-demo" ? TST_DEMO :
+  env === "demo" ? DEMO :
   process.env.BOURACKA_BASE ?? PUBLIC;
 
 export default defineConfig({

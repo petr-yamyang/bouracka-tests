@@ -43,7 +43,7 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_VERSION = "1.0"
-SCRIPT_VERSION = "0.5.4"
+SCRIPT_VERSION = "0.5.5"
 
 # ──────────────────────────────────────────────────────────────────────────
 # §1. Constants — TC discovery, env enum, soft-pass markers, drift markers
@@ -189,11 +189,27 @@ def _parse_playwright(path: Path):
 
 
 def _parse_cypress(paths):
+    """Parse cypress --reporter json output.
+
+    Evidence wiring (B-03, 2026-05-13):
+      - video_ref: from test.video field (per-spec recording)
+      - screenshot_ref: from test.screenshots[0].path (per-failure capture)
+      - trace_ref: points to the run-level reporter JSON itself, since
+        Cypress doesn't produce a Playwright-style trace.zip per test;
+        the JSON is the closest equivalent (full command log + assertions).
+    """
     results = []
     for path in paths:
         if not path.exists():
             warnings.warn(f"[consolidate] Cypress results not found: {path}")
             continue
+        # Reporter JSON path acts as trace_ref (B-03): the JSON itself carries
+        # the command-log + assertion-history that's Cypress's closest
+        # equivalent to a Playwright trace.zip.
+        try:
+            trace_ref_rel = str(path.relative_to(REPO_ROOT)).replace("\\", "/")
+        except ValueError:
+            trace_ref_rel = str(path)
         raw = json.loads(path.read_text(encoding="utf-8"))
         for suite in raw.get("results", [raw]):
             suite_title = suite.get("fullTitle", suite.get("title", ""))
@@ -221,7 +237,9 @@ def _parse_cypress(paths):
                     "duration_ms": duration_ms,
                     "covered_tt": _extract_tt_codes(title),
                     "error_message": error_msg,
-                    "trace_ref": None,
+                    # B-03: trace_ref points to the reporter JSON (closest
+                    # Cypress equivalent of a Playwright trace.zip)
+                    "trace_ref": trace_ref_rel,
                     "screenshot_ref": screenshot_ref,
                     "video_ref": video_ref,
                     "viewport": "375x667",
@@ -434,7 +452,7 @@ def _capture_host() -> dict:
         "host": socket.gethostname() or "unknown",
         "git_commit": None,
         "git_branch": None,
-        "tool_versions": None,
+        "tool_versions": _capture_tool_versions(),
     }
     try:
         host["git_commit"] = subprocess.check_output(
@@ -448,6 +466,66 @@ def _capture_host() -> dict:
     except Exception:
         pass
     return host
+
+
+def _capture_tool_versions() -> dict:
+    """Best-effort capture of framework + runtime versions.
+
+    Per schema §3.7: optional informational data; absence is tolerated.
+    Each capture is independent — failure on one doesn't block others.
+    Gap B-04 (TES-GAP-ANALYSIS 2026-05-12 night) — pre-Day-2 quick-win.
+    """
+    versions: dict[str, str] = {}
+
+    # Python — always available (we're running in it)
+    versions["python"] = sys.version.split()[0]
+
+    # Node — for cypress/playwright runners
+    try:
+        out = subprocess.check_output(
+            ["node", "--version"], stderr=subprocess.DEVNULL, timeout=3,
+        ).decode().strip()
+        if out.startswith("v"):
+            versions["node"] = out[1:]
+    except Exception:
+        pass
+
+    # Cypress — via npx
+    try:
+        out = subprocess.check_output(
+            ["npx", "--no-install", "cypress", "--version"],
+            cwd=str(REPO_ROOT), stderr=subprocess.DEVNULL, timeout=5,
+        ).decode().strip()
+        # cypress --version outputs multiple lines; grab "Cypress package version: X.Y.Z"
+        for line in out.splitlines():
+            if "Cypress package version" in line:
+                versions["cypress"] = line.split(":")[-1].strip()
+                break
+    except Exception:
+        pass
+
+    # Playwright — via npx
+    try:
+        out = subprocess.check_output(
+            ["npx", "--no-install", "playwright", "--version"],
+            cwd=str(REPO_ROOT), stderr=subprocess.DEVNULL, timeout=5,
+        ).decode().strip()
+        # playwright --version outputs "Version X.Y.Z" or just X.Y.Z
+        if "Version" in out:
+            versions["playwright"] = out.split("Version")[-1].strip()
+        elif re.match(r"^\d+\.", out):
+            versions["playwright"] = out
+    except Exception:
+        pass
+
+    # Selenium — installed in current Python env
+    try:
+        import selenium as _se
+        versions["selenium"] = _se.__version__
+    except Exception:
+        pass
+
+    return versions or None
 
 
 def _infer_env_from_url(url: str) -> str | None:
@@ -559,23 +637,71 @@ def _write_md(envelope: dict, out_path: Path) -> None:
                 if v in (VERDICT_FAIL, VERDICT_ERROR):
                     err = (r["error_messages"].get(fw) or "").replace("\n", " ").replace("|", "\\|")[:120]
                     lines.append(f"| {r['tc_code']} | {fw} | {err or '(no message)'} |")
+    # Per-framework duration breakdown (B-06, 2026-05-13)
+    lines += ["", "## Duration breakdown (per-framework, ms)", ""]
+    dur_header = "| TC | " + " | ".join(fw_cols) + " |"
+    dur_sep = "|" + "---|" * (len(fw_cols) + 1)
+    lines += [dur_header, dur_sep]
+    for r in envelope["results"]:
+        row = [r["tc_code"]]
+        for fw in fw_cols:
+            d = r.get("duration_ms", {}).get(fw, 0)
+            row.append(str(d) if d else "—")
+        lines.append("| " + " | ".join(row) + " |")
+
+    # Evidence inventory (B-06, 2026-05-13) — only TCs with non-null evidence
+    evidence_rows = []
+    for r in envelope["results"]:
+        for fw in fw_cols:
+            ev = r.get("evidence", {}).get(fw, {}) or {}
+            for kind in ("screenshot_ref", "video_ref", "trace_ref"):
+                if ev.get(kind):
+                    evidence_rows.append((r["tc_code"], fw, kind, ev[kind]))
+    if evidence_rows:
+        lines += ["", "## Evidence captured", ""]
+        lines += ["| TC | Framework | Kind | Path |", "|---|---|---|---|"]
+        for tc, fw, kind, path in evidence_rows:
+            lines.append(f"| {tc} | {fw} | {kind} | `{path}` |")
+
     df = envelope.get("drift_forensic")
     if df and df.get("active"):
         lines += [
             "",
             "## Drift forensic",
             "",
-            f"- Type: {df.get('drift_type')}",
-            f"- Affected TCs: {', '.join(df.get('affected_tcs', []))}",
+            f"- Type: `{df.get('drift_type')}`",
+            f"- Guard policy: `{df.get('guard_policy', 'unknown')}`",
+            f"- Affected TCs ({len(df.get('affected_tcs', []))}): "
+            f"{', '.join('`' + tc + '`' for tc in df.get('affected_tcs', []))}",
             f"- Notes: {df.get('notes', '')}",
         ]
+        if df.get("trigger_correlation"):
+            lines.append(f"- Correlation: `{df['trigger_correlation']}`")
+
     lines += [
         "",
         "## Provenance",
         "",
-        f"- Host: {envelope['host']['os']} on {envelope['host']['host']}",
-        f"- Git: {envelope['host'].get('git_branch') or '(no branch)'} @ {envelope['host'].get('git_commit') or '(no commit)'}",
-        f"- Reporter: `{envelope['reporter']['command']}` (trigger: {envelope['reporter']['trigger']})",
+        f"- Host: `{envelope['host']['os']}` on `{envelope['host']['host']}`",
+        f"- Git: `{envelope['host'].get('git_branch') or '(no branch)'}` @ "
+        f"`{envelope['host'].get('git_commit') or '(no commit)'}`",
+        f"- Reporter: `{envelope['reporter']['command']}` (trigger: `{envelope['reporter']['trigger']}`)",
+    ]
+    # Tool versions (B-06 + B-04, 2026-05-13)
+    tv = envelope["host"].get("tool_versions")
+    if tv:
+        lines.append("- Tool versions:")
+        for k, v in sorted(tv.items()):
+            lines.append(f"  - `{k}`: `{v}`")
+
+    # Parse warnings (B-06 + B-08, 2026-05-13)
+    pw = envelope.get("parse_warnings") or []
+    if pw:
+        lines += ["", "## Parse warnings", ""]
+        for w in pw:
+            lines.append(f"- `{w}`")
+
+    lines += [
         "",
         "---",
         f"_Generated by tools/consolidate_results.py v{SCRIPT_VERSION} — schema v{SCHEMA_VERSION}_",
@@ -588,10 +714,26 @@ def _write_md(envelope: dict, out_path: Path) -> None:
 # ──────────────────────────────────────────────────────────────────────────
 
 def _synthesize_drift_forensic(flat_results: list[dict]) -> dict | None:
-    """Build drift_forensic block from any DRIFT-* skip markers in flat results."""
+    """Build drift_forensic block from any DRIFT-* skip markers in flat results.
+
+    Drift-type taxonomy per schema §3.7 well-known values:
+      - recaptcha-v3 / recaptcha-v2 — DEMO env score-based bot detection
+      - rate-limit                  — per-IP request quota
+      - other-401-403               — auth-rejection drifts
+      - (other)                     — descriptive strings for non-well-known
+                                       drift types (use sparingly; document
+                                       in `notes`)
+
+    Custom drift types added 2026-05-13 (gap B-01):
+      - ipc-114-renderer-kill       — BUG-CY-001 Chromium renderer kill on
+                                       Cypress headed-mode launch
+      - same-origin-pool            — connection-pool exhaustion on same-
+                                       origin persistent connections
+    """
     drift_tcs = set()
     drift_types = set()
     correlation_id = None
+    drift_narrative_hints: list[str] = []
     for r in flat_results:
         if r["status"] == VERDICT_SKIP_DRIFT:
             drift_tcs.add(r["tc_code"])
@@ -602,6 +744,10 @@ def _synthesize_drift_forensic(flat_results: list[dict]) -> dict | None:
             mc = re.search(r"correlation_id=([0-9a-f-]+)", err, re.IGNORECASE)
             if mc and not correlation_id:
                 correlation_id = mc.group(1)
+            # Capture additional narrative hints from skip reasons
+            # (used by §F-05 frontend richer drift card)
+            if "bug-cy-001" in err.lower() or "ipc-114" in err.lower():
+                drift_narrative_hints.append("BUG-CY-001 renderer-kill pattern observed")
     if not drift_tcs:
         return None
     drift_type = "recaptcha-v3"  # default; refine via marker parse
@@ -616,13 +762,26 @@ def _synthesize_drift_forensic(flat_results: list[dict]) -> dict | None:
         if "rate-limit" in low:
             drift_type = "rate-limit"
             break
+        # B-01 (2026-05-13): expanded taxonomy via (other) umbrella per schema §3.7
+        if "ipc-114" in low or "bug-cy-001" in low or "renderer-kill" in low:
+            drift_type = "ipc-114-renderer-kill"
+            break
+        if "same-origin" in low or "connection-pool" in low:
+            drift_type = "same-origin-pool"
+            break
+        if "401" in low or "403" in low or "auth-fail" in low or "auth-rejected" in low:
+            drift_type = "other-401-403"
+            break
+    notes = f"{len(drift_tcs)} TC(s) skipped via drift guard"
+    if drift_narrative_hints:
+        notes += "; " + "; ".join(sorted(set(drift_narrative_hints)))
     return {
         "active": True,
         "drift_type": drift_type,
         "trigger_correlation": correlation_id,
         "affected_tcs": sorted(drift_tcs),
         "guard_policy": "skip-on-drift",
-        "notes": f"{len(drift_tcs)} TC(s) skipped via drift guard",
+        "notes": notes,
     }
 
 
@@ -670,11 +829,21 @@ def main(argv=None):
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    flat_results: list[dict] = []
-    flat_results.extend(_parse_playwright(Path(args.pw)))
-    cy_paths = [Path(p) for p in glob.glob(args.cy)] or [Path(args.cy)]
-    flat_results.extend(_parse_cypress(cy_paths))
-    flat_results.extend(_parse_selenium(Path(args.se)))
+    # Capture parser warnings into a list rather than only stderr — gap B-08
+    # (TES-GAP-ANALYSIS 2026-05-12 night). Per schema §6.2 consumers tolerate
+    # unknown additional fields, so this is forward-compatible.
+    parse_warnings: list[str] = []
+    with warnings.catch_warnings(record=True) as w_log:
+        warnings.simplefilter("always")
+        flat_results: list[dict] = []
+        flat_results.extend(_parse_playwright(Path(args.pw)))
+        cy_paths = [Path(p) for p in glob.glob(args.cy)] or [Path(args.cy)]
+        flat_results.extend(_parse_cypress(cy_paths))
+        flat_results.extend(_parse_selenium(Path(args.se)))
+        for w in w_log:
+            parse_warnings.append(str(w.message))
+            # Echo to stderr so existing operator-visible behaviour is preserved
+            print(f"[consolidate-warn] {w.message}", file=sys.stderr)
 
     frameworks_present = sorted({r["framework"] for r in flat_results})
     if not frameworks_present:
@@ -709,6 +878,9 @@ def main(argv=None):
             "ci_run_id": args.ci_run_id,
             "operator": os.environ.get("USER") or os.environ.get("USERNAME") or "unknown",
         },
+        # v1.1-candidate informational field (gap B-08). Empty list when all
+        # framework outputs were present. Consumers tolerate per schema §6.2.
+        "parse_warnings": parse_warnings,
     }
 
     # Producer-side validation per schema §5.1
