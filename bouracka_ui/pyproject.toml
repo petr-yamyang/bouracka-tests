@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bouracka-ui"
-version = "0.1.5.dev5"
+version = "0.1.5"
 description = "Local presentation-layer UI for Bouračka test suite — pick env, select tests, run, view results, file bugs (JIRA-style). Forerunner of MI-M-T UI."
 readme = "README.md"
 requires-python = ">=3.9"

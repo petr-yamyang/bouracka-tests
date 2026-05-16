@@ -7,6 +7,42 @@ TestPlan version bumps are decoupled** (see `_specs/EMAIL-DELIVERABILITY-RULES-v
 
 ---
 
+## [bouracka-ui v0.1.5] — 2026-05-15 — Brief #008: release engineering (drop `.dev5` suffix)
+
+**First Kate-ready non-dev build of the v0.1.5 line.** No new features; this commit reconciles the integration milestone with release semantics. Replaces the `v0.1.5.dev5` internal-dev marker with proper `v0.1.5` versioning so Kate's `/api/health` reports `server_version: "0.1.5"` instead of a `.dev5` suffix that would otherwise surprise her version checks.
+
+### Scope IN — version bump only (no code/behaviour change)
+
+- **`bouracka_ui/pyproject.toml`**: `version = "0.1.5.dev5"` → `version = "0.1.5"`.
+- **`bouracka_ui/bouracka_ui/__init__.py`**: `__version__ = "0.1.5-dev5"` → `__version__ = "0.1.5"`.
+- **`bouracka_ui/tests/test_smoke.py::test_health_returns_versions`**: assertion stays at `j["server_version"].startswith("0.1.5")` (still passes; flexible enough for future 0.1.5.N patches).
+- **`delivery/package-hp-elite-v0.1.5-multi-abi.ps1`**: distVersion + wheelVersion bumped to non-dev. Produces `bouracka-ui-hp-elite-v0.1.5-{CS,EN}-multi-abi.zip` (was `v0.1.5.dev5`).
+- **`delivery/KATE-DROP-2026-05-15/KATE-FROM-ZERO-INSTALL-CS.md`**: rewritten in-place from v0.1.2 baseline → v0.1.5 (substantive but not full-rewrite — ~50 references updated, new §0.1 "Co je nové" section). Same file also copied to `delivery/KATE-FROM-ZERO-INSTALL-CS.md` as the canonical working-copy for future drops.
+- **Kate drop repackaged**: same `delivery/KATE-DROP-2026-05-15.zip` filename, contents now contain the v0.1.5 wheel. New SHA256 supersedes the earlier dev5 ship's SHA `a7774cad…1850c`.
+
+### Scope OUT — explicitly deferred
+
+- **ABI matrix re-verify** on actual HP Elite hardware running cp310/cp311/cp312 — not done from this session (no install-test capability in the build host). Wheelhouse multi-ABI verification in the packager output (which DID run, see `[3/8] Verifying critical C-extension wheels present for all ABIs`) is the only matrix check this version received. **Recommended:** smoke-install on a clean HP Elite under all 3 Python versions before mass distribution.
+- **Brief #003 — TC discovery from workbook** — separate brief, not part of release-engineering.
+- **`KATE-V0.1.5-DELTA-CS.md` retirement** — kept in the drop folder for now (documents the v0.1.4 → v0.1.5 transition, even though the runbook now covers v0.1.5 standalone). Consider removing in v0.1.6 drop when v0.1.4 audience has fully migrated.
+- **Tag-level GPG signing** — `v0.1.5` annotated tag created without signing. Sign in a follow-up commit if SUPIN audit policy requires.
+
+### Regression candidates (suggested follow-up tests)
+
+| Surface | Churn | Coverage gap | Suggested test |
+|---|---|---|---|
+| `pyproject.toml::version` ↔ `__init__.py::__version__` ↔ `/api/health::server_version` | Three-way version coupling, manual sync today | Add `tests/test_version_coupling.py` asserting all three agree at startup. Run as part of CI before any tag push. |
+| Multi-ABI wheelhouse content vs `pyproject.toml dependencies` | If a dep bumps requiring a newer minimum cp version, wheelhouse may silently miss it | Add packager step: assert every dep listed in pyproject has at least one matching wheel per supported ABI in the staged wheelhouse. |
+| Kate runbook §3 SHA256 verification flow | Documented but never tested | Smoke: after each new drop, run the SHA256 check from runbook §3 against the actual MANIFEST.txt; assert all pass. |
+
+### Known issues at v0.1.5 tag
+
+- **Drop folder name `KATE-DROP-2026-05-15`** retains the date stamp of the first (dev5) ship, even though the inner artefacts have been re-built to v0.1.5. Drop name predates the version-bump policy. Optional rename to `KATE-DROP-2026-05-15-v0.1.5` is cosmetic and not done.
+- **`KATE-V0.1.5-DELTA-CS.md`** in the drop folder references "v0.1.5.dev5" in its header. Functionally correct (the delta from v0.1.4 still describes the v0.1.5 line of changes), but cosmetically inconsistent with the now-v0.1.5 runbook header.
+- The 2 × `PytestUnraisableExceptionWarning` from Windows + Python 3.10 + FastAPI TestClient asyncio teardown remain (pre-existing, cosmetic).
+
+---
+
 ## [bouracka-ui v0.1.5-dev9] — 2026-05-15 — Brief #001b: patcher data migration (--source-data, F-1m..F-7m)
 
 **Internal-only dev build, final integration milestone.** Extends Brief #001's schema patcher with row-level data migration from a tester's working-copy workbook. No bouracka_ui Python code change — this brief lives entirely in `tools/`. Final integration milestone name (`dev9`) is by merge order.
