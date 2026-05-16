@@ -1,4 +1,4 @@
-# Bouračka UI v0.1.0 — HP Elite Distribution (EN)
+# Bouračka UI v0.1.2 — HP Elite Distribution (EN, Kate drop 2026-05-12)
 
 **Start here:** open `INSTALL-HP-ELITE.txt` and follow the steps in order.
 
@@ -12,8 +12,9 @@
 | `DIAGNOSTICS-PLAYBOOK.md` | What to check when the SYSTEM around the UI misbehaves: network reachability, integration mock-vs-live deltas, drift catalog, pre-flight TST checklist, DELTA-REPORT template for shipping findings back | for any "this isn't an obvious UI bug" moment |
 | `kill-stragglers.ps1` | Helper script: kills stuck servers + cleans pip orphans | when troubleshooting tells you to |
 | `SHA256SUMS.txt` | Checksums for integrity verification | optional, before install on security-sensitive machines |
-| `bouracka_ui-0.1.0-py3-none-any.whl` | The installable wheel | referenced by INSTALL-HP-ELITE.txt step 3 |
-| `BOURACKA-TESTPLAN-v0.4.2.xlsx` | Test workbook (TCs / envs / bugs) | referenced by the UI; don't touch directly |
+| `bouracka_ui-0.1.2-py3-none-any.whl` | The installable wheel | referenced by INSTALL-HP-ELITE.txt step 4 |
+| `wheelhouse/` | ~28 .whl files, pre-downloaded dependencies (air-gap install) | used by INSTALL step 4 |
+| `BOURACKA-TESTPLAN-v0.4.3.xlsx` | Test workbook (TCs / envs / bugs) — KP-reviewed primary | referenced by the UI; don't touch directly |
 
 ## Quick sanity check
 

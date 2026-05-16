@@ -1,160 +1,227 @@
 ================================================================================
-  BOURACKA UI v0.1.0 — INSTALAČNÍ PRŮVODCE PRO HP ELITE (CS)
-  Cílový stroj: HP EliteBook SUPNB001 (vlastněný SUPIN) nebo libovolný Win 10/11 notebook
+  BOURACKA UI v0.1.2 — INSTALAČNÍ PRŮVODCE PRO HP ELITE (CS, AIR-GAP READY)
+  Cílový stroj: HP EliteBook SUPNB001 (vlastněný SUPIN) nebo Win 10/11 notebook
   Cílová skupina: testeři (znalost Pythonu není potřeba)
   Časová náročnost: ~10 minut
+  Vyžadovaný síťový přístup na cíli: ŽÁDNÝ (balíček je plně self-contained)
 ================================================================================
+
+CO JE NOVÉHO V v0.1.2
+---------------------
+- Air-gap installer: balíček nyní obsahuje složku `wheelhouse/` se všemi
+  Python závislostmi jako předem-stažené wheely. ŽÁDNÝ PyPI přístup
+  na cílovém stroji není potřeba. Kritické pro SUPIN HP Elite (žádný
+  externí síťový egress).
+- Python-version-tagged: název ZIPu obsahuje `-py312`, `-py311` nebo
+  `-py310` podle toho, pro kterou Python ABI byly wheely vyrobeny.
+- Všechny BUG opravy z v0.1.0: BUG-BUI-001 (NTFS filename safety),
+  BUG-BUI-002 (in-flight polling), BUG-BUI-003 (přejmenování karty),
+  BUG-BUI-004 (REPO_ROOT auto-detekce + Back tlačítko + multi-cause
+  zpráva + pytest-json-report runtime dependency).
+
 
 CO INSTALUJETE
 --------------
-Bouracka UI je malá lokální webová aplikace, která umožňuje spouštět Bouračku
-testovací sadu proti demo.bouracka.cz (nebo tst.bouracka.cz, uat.bouracka.cz,
-www.bouracka.cz) z jediné obrazovky místo zapamatovávání si oddělených CLI
-příkazů pro jednotlivé frameworky (Cypress / Playwright / Selenium). Také
-zobrazuje výsledky a umožňuje zakládat bugy zpět do sdíleného Excel
-workbooku.
+Bouracka UI je malá lokální webová aplikace, která umožňuje spouštět
+Bouračku testovací sadu proti demo.bouracka.cz (nebo tst.bouracka.cz,
+uat.bouracka.cz, www.bouracka.cz) z jediné obrazovky místo zapamatovávání
+si oddělených CLI příkazů pro jednotlivé frameworky (Cypress / Playwright
+/ Selenium). Také zobrazuje výsledky a umožňuje zakládat bugy zpět do
+sdíleného Excel workbooku.
 
-Běží KOMPLETNĚ na VAŠEM notebooku. Žádná data neopouštějí stroj (kromě HTTP
-požadavků, které samotné testovací skripty stejně posílají na bouracka.cz).
+Běží KOMPLETNĚ na VAŠEM notebooku. Žádná data neopouštějí stroj.
 
 
-PŘEDPOKLADY
------------
-Potřebujete JEDEN z následujících Python interpretů dostupný na PATH:
-  - Python 3.10 (doporučeno — odpovídá wheelu, který jsme sestavili)
-  - Python 3.11 nebo 3.12 (taky v pořádku; pure-Python wheel)
+PRE-FLIGHT KONTROLA — Python verze + odpovídající ZIP
+------------------------------------------------------
+ZIP, který máte, by měl mít název typu:
 
-Kontrola — otevřete PowerShell a spusťte:
+    bouracka-ui-hp-elite-v0.1.2-CS-py312.zip
+                                    ^^^^^
+                                    Python 3.12 wheely uvnitř
+
+Na cílovém stroji NEJDŘÍV ověřte, jakou verzi Pythonu máte:
 
     python --version
 
-Pokud vidíte „Python 3.10.x" nebo vyšší, jste OK. Pokud dostanete „command
-not found" nebo mnohem starší verzi, nainstalujte nejdřív Python 3.10
-z python.org (zaškrtněte „Add Python to PATH" během instalace).
+Potřebujete SHODU mezi sufixem ZIPu `-pyNNN` a vaším lokálním Pythonem:
 
-VOLITELNÉ předpoklady — potřebné jen pokud chcete, aby běhy skutečně
-spouštěly browser automation místo mock-mode dema:
-  - Node.js 18+ (pro Cypress + Playwright)
-  - Cypress 13+ (npm install cypress --save-dev uvnitř bouracka-tests/)
-  - Playwright (npm install @playwright/test --save-dev; npx playwright install)
+    Python 3.10.x  →  použijte ZIP -py310
+    Python 3.11.x  →  použijte ZIP -py311
+    Python 3.12.x  →  použijte ZIP -py312
 
-Pokud npx není na PATH, dispatcher přepne do MOCK MODE — UI funguje
-end-to-end (můžete ho ovládat, vidět falešné výsledky, zakládat bugy),
-prostě jen nebude skutečně kontaktovat bouracka.cz.
+Pokud máte jinou verzi Pythonu, požádejte Peta, aby přestavěl wheelhouse
+pro vaši verzi (jeden PowerShell příkaz na ThinkPadu, ~30 sekund).
+
+Pokud Python není nainstalovaný:
+- Nainstalujte Python 3.12 z python.org. Zaškrtněte „Add Python to PATH"
+  během instalace. (3.10 a 3.11 také fungují, ale 3.12 je doporučená.)
 
 
-INSTALACE — POPRVÉ NA ČISTÉM NOTEBOOKU
---------------------------------------
+INSTALACE — POPRVÉ NA ČISTÉM NOTEBOOKU (AIR-GAP REŽIM)
+-------------------------------------------------------
 
-1. Rozbalte tento balíček do složky, kterou si udržíte. Doporučeno:
+1. Rozbalte balíček do složky, kterou si udržíte. Doporučeno:
 
-       C:\bouracka-ui
+       C:\TestAutomationSite\
 
-2. Otevřete PowerShell, přejděte do té složky a vytvořte virtual environment:
+   (nebo jakákoli vámi preferovaná cesta — bouracka-ui auto-detekuje
+   umístění).
 
-       cd C:\bouracka-ui
+2. Ověřte, že wheelhouse podsložka existuje a obsahuje ~25-30 wheelů:
+
+       cd C:\TestAutomationSite
+       Get-ChildItem .\wheelhouse\*.whl | Measure-Object | Select-Object Count
+
+3. Vytvořte Python virtual environment:
+
        python -m venv .venv
        .\.venv\Scripts\Activate.ps1
 
-   Teď byste měli před promptem vidět "(.venv)".
+   Teď byste měli před promptem vidět „(.venv)".
 
    Pokud PowerShell odmítne spustit Activate.ps1 s „execution of scripts
-   is disabled", spusťte JEDNOU jako aktuální uživatel (admin práva nejsou
-   potřeba):
+   is disabled", spusťte JEDNOU jako aktuální uživatel (admin práva
+   nejsou potřeba):
 
        Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 
    ...a pak Activate.ps1 znovu.
 
-3. Nainstalujte wheel bouracka-ui:
+4. Nainstalujte bouracka-ui Z PŘIBALENÉHO WHEELHOUSE (žádný PyPI přístup
+   potřeba):
 
-       pip install --upgrade pip
-       pip install bouracka_ui-0.1.0-py3-none-any.whl
+       pip install --no-index `
+         --find-links="C:\TestAutomationSite\wheelhouse" `
+         "C:\TestAutomationSite\bouracka_ui-0.1.2-py3-none-any.whl"
 
-   Stáhne se FastAPI, uvicorn, openpyxl atd. (~30 MB celkem).
+   Klíčové parametry:
+     --no-index           říká pipu, aby NIKDY nekontaktoval PyPI
+     --find-links=<cesta> ukazuje na lokální wheelhouse složku
+     <absolutní cesta>    vyhněte se relativním cestám; pip je na Windows
+                          citlivý na `.\`
 
-4. Smoke kontrola instalace:
+   Očekávaný výstup: ~28 balíčků „Successfully installed" — včetně
+   bouracka-ui-0.1.2 + fastapi + uvicorn + openpyxl + sse-starlette +
+   python-multipart + pytest + pytest-json-report + tranzitivní deps.
+
+5. Smoke kontrola instalace:
 
        bouracka-ui --help
 
    Měli byste vidět banner s nápovědou. Pokud ano — máte nainstalováno.
 
-5. Ověřte, že testovací workbook je přítomný vedle instalace:
+6. Ověřte, že workbook je přítomný vedle instalace:
 
-       ls BOURACKA-TESTPLAN-*.xlsx
+       Get-ChildItem .\BOURACKA-TESTPLAN-*.xlsx
 
-   Měli byste vidět „BOURACKA-TESTPLAN-v0.4.2.xlsx" (nebo verzi
+   Měli byste vidět „BOURACKA-TESTPLAN-v0.4.3.xlsx" (nebo verzi
    dodanou s tímto balíčkem).
 
 
 SPUŠTĚNÍ
 --------
 
-       bouracka-ui
+       bouracka-ui --no-browser
 
-To spustí lokální server na http://127.0.0.1:8424/ a (defaultně) automaticky
-otevře váš výchozí prohlížeč na stránce Run.
+To spustí lokální server na http://127.0.0.1:8424/. Otevřete tuto URL ve
+svém prohlížeči. Parametr `--no-browser` přeskočí auto-otevření (užitečné,
+pokud chcete spustit server v jednom okně a používat prohlížeč zvlášť).
 
 Zastavení serveru: Ctrl+C v okně PowerShellu. Záložku v prohlížeči zavřete,
 až s tím skončíte.
 
+Pokud je port 8424 už používán (protože předchozí bouracka-ui se neukončil
+čistě), spusťte nejdřív přibalený `kill-stragglers.ps1` — viz
+TROUBLESHOOTING-CS.md §1.
 
-PRVNÍ BĚH — SMOKE TEST (TC-CP-A1-MAIN-DEMO)
--------------------------------------------
 
-1. Když bouracka-ui běží, otevřete v prohlížeči http://127.0.0.1:8424/.
-2. Na stránce „Run tests":
+PRVNÍ BĚH — SMOKE TEST (TC-CP-A1-MAIN-DEMO, MOCK MODE)
+-------------------------------------------------------
+Real-mode dispatch potřebuje Cypress / Playwright / pytest+Selenium
+nainstalované zvlášť (typicky přes balíček automation-v0.5.4). Pro
+rychlé první ověření, že UI plumbing funguje, použijte mock mode:
+
+1. S aktivovaným venv, v NOVÉM okně PowerShellu:
+
+       $env:BOURACKA_UI_DISPATCH_MODE = "mock"
+       cd C:\TestAutomationSite
+       .\.venv\Scripts\Activate.ps1
+       bouracka-ui --no-browser
+
+2. Otevřete http://127.0.0.1:8424/ v prohlížeči.
+
+3. Na stránce „Run tests":
    - Environment: nechte na „ENV-DMO — Demo (demo.bouracka.cz)"
-   - Framework: vyberte „cypress only", pokud máte Cypress nainstalovaný,
-                jinak nechte na „all" — mock mode vyrobí fiktivní výsledky
-3. Sjeďte níž, zaškrtněte TC s názvem „TC-CP-A1-MAIN-DEMO" (je hned nahoře).
-4. Klikněte na tlačítko „Run selected".
-5. Pod tím se objeví karta Live log. Sledujte řádky, jak se streamují.
-6. Po ~30–60 s (reálný mód) nebo ~3 s (mock mode) budete automaticky
-   přesměrováni na stránku /results/<run_id> s verdiktovou maticí.
+   - Framework: nechte na „all" (mock mode handles all frameworks)
 
-DOKUD BĚH PROBÍHÁ, výsledková stránka ukáže "running" pilulku + indikátor
-pollingu. To je normální — automaticky se obnovuje každé 2 s, dokud nebude
-zapsaný envelope. Můžete odejít (Runs / Bugs / About) a vrátit se přes
-stránku Runs později; běh pokračuje na pozadí.
+4. Sjeďte níž, zaškrtněte „TC-CP-A1-MAIN-DEMO". Klikněte na „Run selected".
+
+5. Po ~3 s se objeví verdiktová matice se syntetickými výsledky. UI
+   plumbing potvrzen end-to-end.
+
+6. Zastavte server Ctrl+C. Odstraňte mock-mode override, až budete
+   připraveni pro real dispatch:
+
+       Remove-Item Env:BOURACKA_UI_DISPATCH_MODE
+
+
+REAL-MODE DISPATCH — spárovat s automation-v0.5.4
+--------------------------------------------------
+Pro reálné Cypress / Playwright / pytest+Selenium běhy proti
+bouracka.cz potřebujete automation suite nainstalovaný vedle tohoto UI:
+
+   1. Rozbalte `bouracka-automation-v0.5.4.zip` (spárovaná dodávka) — obsahuje
+      `bouracka-tests-v0.5.4.zip` uvnitř; rozbalte TEN také.
+   2. Výsledek je strom `bouracka-tests/` s `tools/`, `cypress/`,
+      `playwright/`, `selenium/`, fixtures atd.
+   3. Spusťte `bouracka-ui --no-browser` zevnitř toho bouracka-tests stromu
+      (REPO_ROOT auto-detekce jde nahoru z CWD a hledá
+      `tools/consolidate_results.py` — přítomné v automation-v0.5.4).
+   4. Pokud detekce selže, override pomocí:
+         $env:BOURACKA_UI_REPO_ROOT = "C:\cesta\k\bouracka-tests"
+
+Cypress a Playwright navíc potřebují nainstalovaný Node.js 18+ a:
+   npm install                       (z automation-v0.5.4 kořene)
+   npx playwright install            (stáhne playwright prohlížeče)
 
 
 ZNÁMÉ PROBLÉMY + ŘEŠENÍ
------------------------
+------------------------
 
-→ Pokud vidíte „Run not found: run-...." déle než ~90 s:
-  Dispatcher pravděpodobně tiše selhal (např. Cypress není nainstalovaný,
-  ale framework byl nastaven na „cypress only"). Zkontrolujte log na téže
-  stránce, nebo použijte stránku /about pro zobrazení, které nástroje jsou
-  detekovány na PATH.
+→ pip install selže s „getaddrinfo failed" / „No matching distribution":
+  To znamená, že pip zkusil dosáhnout PyPI. Ujistěte se, že jste použili
+  `--no-index`. Air-gap instalace MUSÍ použít --no-index --find-links pro
+  fungování bez internetu. Spusťte znovu krok 4 s oběma parametry.
 
-→ Pokud start „bouracka-ui" narazí na „[Errno 10048] error while attempting
-  to bind on address ('127.0.0.1', 8424)":
-  Běží jiný proces bouracka-ui. Použijte kill-stragglers.ps1 (přibalený
-  v tomto balíčku) — přesný postup viz TROUBLESHOOTING-CS.md.
+→ pip install selže s „Could not find a version that satisfies the
+  requirement <něco>; extra == 'standard'" nebo platform-tagged wheely
+  nenalezeny:
+  Nesoulad Python verzí. Sufix ZIPu `-pyNNN` neodpovídá vašemu lokálnímu
+  Pythonu. Ověřte `python --version` a použijte odpovídající variantu ZIPu.
 
-→ Pokud pip install selže s „Access Denied" na websockets/speedups.cp310...
-  nebo httptools/parser.cp310...":
-  Stejná příčina — zastaralý proces bouracka-ui drží .pyd soubor.
-  Spusťte kill-stragglers.ps1, pak zkuste pip install znovu.
+→ „Run not found: run-...." přetrvává déle než 90 s:
+  Dispatcher pravděpodobně tiše selhal. Zkontrolujte log na výsledkové
+  stránce (nyní ukazuje 4 kandidátní příčiny) nebo použijte /about pro
+  dostupnost nástrojů.
 
-→ Cokoli jiného: otevřete TROUBLESHOOTING-CS.md.
+→ „[Errno 10048] error while attempting to bind on address ('127.0.0.1', 8424)":
+  Jiný bouracka-ui stále běží. Použijte kill-stragglers.ps1 (přibalený).
 
-
-CO DÁL
-------
-Po prvním úspěšném smoke testu nahlédněte do OPERATOR-GUIDE-CS.md pro
-každodenní workflow (spouštění test setů, zakládání bugů, export trace
-bundlů atd.).
+→ Cokoli jiného: otevřete TROUBLESHOOTING-CS.md, pak DIAGNOSTICS-PLAYBOOK-CS.md
+  pro hlubší diagnostiku.
 
 
-OBSAH BALÍČKU
--------------
-  bouracka_ui-0.1.0-py3-none-any.whl       Instalační wheel
-  BOURACKA-TESTPLAN-v0.4.2.xlsx            Testovací workbook (datový zdroj)
+OBSAH BALÍČKU (v0.1.2)
+----------------------
+  bouracka_ui-0.1.2-py3-none-any.whl       Instalační wheel
+  wheelhouse/                              ~25-30 .whl souborů (všechny Python deps,
+                                           předem stažené pro offline instalaci)
+  BOURACKA-TESTPLAN-v0.4.3.xlsx            Testovací workbook (datový zdroj)
   INSTALL-HP-ELITE-CS.txt                  Tento soubor
   OPERATOR-GUIDE-CS.md                     Každodenní workflow operátora
-  TROUBLESHOOTING-CS.md                    Postupy pro chybové stavy
+  TROUBLESHOOTING-CS.md                    Postupy pro chybové stavy (vč. air-gap pip)
+  DIAGNOSTICS-PLAYBOOK-CS.md               System-level diagnostika + DELTA-REPORT
   kill-stragglers.ps1                      Cleanup helper pro zaseklé procesy
   SHA256SUMS.txt                           Kontrolní součty pro ověření integrity
 
@@ -162,8 +229,9 @@ OBSAH BALÍČKU
 KONTAKT
 -------
 Pete (petr.yamyang@gmail.com) — autor/maintainer
-Problémy / bugy v UI samotném: založte jako BUG-BUI-NNN přes stránku Bugs.
+Problémy / bugy v UI samotném: založte jako BUG-BUI-NNN přes stránku Bugs,
+                              NEBO přes DELTA-REPORT (viz DIAGNOSTICS-PLAYBOOK §7).
 
 ================================================================================
-Konec INSTALL-HP-ELITE-CS.txt
+Konec INSTALL-HP-ELITE-CS.txt (v0.1.2, air-gap-ready)
 ================================================================================

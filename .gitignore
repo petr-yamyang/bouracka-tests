@@ -109,3 +109,8 @@ bouracka_ui/.pytest_cache/
 # Cypress runtime outputs at repo root (long filenames break Windows MAX_PATH)
 cypress/screenshots/
 cypress/videos/
+
+# Drop folder build artefacts (regenerated each ship — never tracked)
+delivery/bouracka-ui-hp-elite-v0.1.*/wheelhouse/
+delivery/bouracka-ui-hp-elite-v0.1.*/*.whl
+delivery/bouracka-ui-hp-elite-v0.1.*/SHA256SUMS.txt

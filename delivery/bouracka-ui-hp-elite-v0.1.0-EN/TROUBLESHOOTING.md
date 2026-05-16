@@ -197,6 +197,88 @@ It contains: server health, workbook path + tool availability, OS info, recent s
 
 ---
 
+## §11. Air-gap pip install failures (SUPIN HP Elite + similar)
+
+**Symptom A — `getaddrinfo failed`:**
+
+```
+WARNING: Retrying ... Failed to establish a new connection: [Errno 11001] getaddrinfo failed
+ERROR: Could not find a version that satisfies the requirement fastapi>=0.110
+ERROR: No matching distribution found for fastapi>=0.110
+```
+
+**Why:** the install machine has no PyPI egress (SUPIN policy). Pip tried to download FastAPI from the internet and got DNS-resolution failure.
+
+**Fix:** install MUST use `--no-index --find-links=<wheelhouse-path>`. Re-read INSTALL-HP-ELITE.txt §4. Concrete command:
+
+```powershell
+pip install --no-index `
+  --find-links="C:\TestAutomationSite\wheelhouse" `
+  "C:\TestAutomationSite\bouracka_ui-0.1.1-py3-none-any.whl"
+```
+
+The `--no-index` flag is what makes this air-gap-safe. Without it, pip will still try PyPI even if local wheels exist.
+
+---
+
+**Symptom B — `Could not find a version ... ; extra == "standard"`:**
+
+```
+ERROR: Could not find a version that satisfies the requirement httptools>=0.6.3; extra == "standard"
+```
+
+**Why:** the wheelhouse is missing wheels for optional extras. pip <24 doesn't reliably follow `uvicorn[standard]` extras from a local wheel's metadata. Wheelhouse was built without explicit enumeration.
+
+**Fix:** rebuild the wheelhouse on ThinkPad with explicit extra enumeration:
+
+```powershell
+pip download -d wheelhouse `
+  --platform win_amd64 --python-version 312 --only-binary=:all: `
+  dist\bouracka_ui-0.1.1-py3-none-any.whl `
+  "uvicorn[standard]>=0.27" `
+  "pytest>=8.0" `
+  "pytest-json-report>=1.5"
+```
+
+The packager script `delivery/package-hp-elite-v0.1.0.ps1` does this automatically in v0.1.1+.
+
+---
+
+**Symptom C — `Could not find a version ... cp310-cp310-win_amd64.whl` won't install:**
+
+**Why:** wheelhouse contains cp310 wheels (Python 3.10 ABI) but target machine has a different Python version. C-extension wheels (httptools, watchfiles, websockets, pyyaml, pydantic-core) are ABI-locked.
+
+**Fix:** check `python --version` on target. Match the wheelhouse `-pyNNN` ZIP suffix to it:
+
+```powershell
+python --version
+# Python 3.12.10  →  use bouracka-ui-hp-elite-v0.1.1-EN-py312.zip
+# Python 3.11.x   →  use ...-py311.zip
+# Python 3.10.x   →  use ...-py310.zip
+```
+
+If you have the wrong wheelhouse, ask Pete to rebuild on ThinkPad:
+
+```powershell
+.\delivery\package-hp-elite-v0.1.0.ps1 -PythonVersion 312
+```
+
+---
+
+**Symptom D — `WARNING: Location '.\wheelhouse' is ignored ... lacks a specific scheme`:**
+
+**Why:** pip on some Windows configurations doesn't reliably resolve `.\wheelhouse` as a local-directory `--find-links` target.
+
+**Fix:** use an ABSOLUTE path. Always:
+
+```powershell
+pip install --no-index --find-links="C:\TestAutomationSite\wheelhouse" "C:\TestAutomationSite\bouracka_ui-0.1.1-py3-none-any.whl"
+```
+
+(see KB-042 for the full lesson on air-gap Python packaging quirks)
+
+---
+
 ## Appendix A — Known limitations
 
 - **v0.1.0** ships with MOCK fallback when tooling is missing — this is intentional, but means you can have a green-looking results page without any browsers actually running. Check `/about` to confirm real-mode dispatch.

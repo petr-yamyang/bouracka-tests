@@ -1,9 +1,23 @@
 ================================================================================
-  BOURACKA UI v0.1.0 — HP ELITE INSTALL GUIDE (EN)
+  BOURACKA UI v0.1.2 — HP ELITE INSTALL GUIDE (EN, AIR-GAP-READY)
   Target machine: HP EliteBook SUPNB001 (SUPIN-owned) or any Windows 10/11 tester laptop
   Audience: testers (no Python expertise required)
   Time required: ~10 minutes
+  Network access required on target: NONE (the package is fully self-contained)
 ================================================================================
+
+WHAT'S NEW IN v0.1.2
+--------------------
+- Air-gap installer: the package now bundles a `wheelhouse/` folder with all
+  Python dependencies as pre-downloaded wheels. NO PyPI access required on the
+  target machine. Critical for SUPIN HP Elite (no external network egress).
+- Python-version-tagged: the ZIP filename includes `-py312`, `-py311`, or
+  `-py310` depending on which Python ABI the wheels were built for.
+- All BUG fixes from v0.1.0: BUG-BUI-001 (NTFS filename safety),
+  BUG-BUI-002 (in-flight polling), BUG-BUI-003 (card retitle),
+  BUG-BUI-004 (REPO_ROOT auto-detect + Back button + multi-cause message +
+  pytest-json-report runtime dep).
+
 
 WHAT YOU'RE INSTALLING
 ----------------------
@@ -13,45 +27,51 @@ from a single screen instead of remembering separate CLI commands per framework
 (Cypress / Playwright / Selenium). It also displays results and lets you file
 bugs back into the shared Excel workbook.
 
-It runs ENTIRELY on YOUR laptop. No data leaves the machine (except the HTTP
-requests the test scripts already make to bouracka.cz).
+It runs ENTIRELY on YOUR laptop. No data leaves the machine.
 
 
-PREREQUISITES
--------------
-You need ONE of the following Python interpreters available on PATH:
-  - Python 3.10 (recommended — matches the wheel we built)
-  - Python 3.11 or 3.12 (also fine; pure-Python wheel)
+PRE-FLIGHT CHECK — Python version + matching ZIP
+------------------------------------------------
+The ZIP you have should have a name like:
 
-To check, open PowerShell and run:
+    bouracka-ui-hp-elite-v0.1.2-EN-py312.zip
+                                    ^^^^^
+                                    Python 3.12 wheels inside
+
+On the target machine, FIRST confirm what Python version you have:
 
     python --version
 
-If you see "Python 3.10.x" or higher, you're good. If you get "command not
-found" or a much older version, install Python 3.10 from python.org first
-(check "Add Python to PATH" during installation).
+You need a MATCH between the ZIP's `-pyNNN` suffix and your local Python:
 
-OPTIONAL prerequisites — only needed if you actually want the test runs to
-fire real browser automation rather than mock-mode demos:
-  - Node.js 18+ (for Cypress + Playwright)
-  - Cypress 13+ (npm install cypress --save-dev inside bouracka-tests/)
-  - Playwright (npm install @playwright/test --save-dev; npx playwright install)
+    Python 3.10.x  →  use the -py310 ZIP
+    Python 3.11.x  →  use the -py311 ZIP
+    Python 3.12.x  →  use the -py312 ZIP
 
-If npx is not on PATH the dispatcher falls back to MOCK MODE — the UI still
-works end-to-end (you can drive it, see fake results, file bugs), it just
-won't actually contact bouracka.cz.
+If you have a different Python version, ask Pete to rebuild the wheelhouse
+for your version (one PowerShell command on ThinkPad, ~30 seconds).
+
+If Python is not installed:
+- Install Python 3.12 from python.org. Tick "Add Python to PATH" during
+  installation. (3.10 and 3.11 also work but 3.12 is recommended.)
 
 
-INSTALL — FIRST TIME ON A FRESH LAPTOP
---------------------------------------
+INSTALL — FIRST TIME ON A FRESH LAPTOP (AIR-GAP MODE)
+------------------------------------------------------
 
-1. Unzip this package to a folder you'll keep. Recommended:
+1. Unzip the package to a folder you'll keep. Recommended:
 
-       C:\bouracka-ui
+       C:\TestAutomationSite\
 
-2. Open PowerShell, navigate to that folder, and create a virtual environment:
+   (or any path you prefer — the bouracka-ui auto-detects the location).
 
-       cd C:\bouracka-ui
+2. Confirm the wheelhouse subfolder exists with ~25-30 wheels in it:
+
+       cd C:\TestAutomationSite
+       Get-ChildItem .\wheelhouse\*.whl | Measure-Object | Select-Object Count
+
+3. Create a Python virtual environment:
+
        python -m venv .venv
        .\.venv\Scripts\Activate.ps1
 
@@ -64,94 +84,136 @@ INSTALL — FIRST TIME ON A FRESH LAPTOP
 
    ...and then re-run Activate.ps1.
 
-3. Install the bouracka-ui wheel:
+4. Install bouracka-ui FROM THE BUNDLED WHEELHOUSE (no PyPI access needed):
 
-       pip install --upgrade pip
-       pip install bouracka_ui-0.1.0-py3-none-any.whl
+       pip install --no-index `
+         --find-links="C:\TestAutomationSite\wheelhouse" `
+         "C:\TestAutomationSite\bouracka_ui-0.1.2-py3-none-any.whl"
 
-   This pulls down FastAPI, uvicorn, openpyxl, etc. (~30 MB total).
+   Key flags:
+     --no-index           tells pip to NEVER consult PyPI
+     --find-links=<path>  points to the local wheelhouse folder
+     <absolute path>      avoid relative paths; pip is finicky with `.\` on Windows
 
-4. Smoke-check the install:
+   Expected output: ~28 packages "Successfully installed" — including
+   bouracka-ui-0.1.2 + fastapi + uvicorn + openpyxl + sse-starlette +
+   python-multipart + pytest + pytest-json-report + transitive deps.
+
+5. Smoke-check the install:
 
        bouracka-ui --help
 
    You should see the usage banner. If yes — you're installed.
 
-5. Verify the test workbook is present alongside the install:
+6. Verify the workbook is present alongside the install:
 
-       ls BOURACKA-TESTPLAN-*.xlsx
+       Get-ChildItem .\BOURACKA-TESTPLAN-*.xlsx
 
-   You should see "BOURACKA-TESTPLAN-v0.4.2.xlsx" (or whichever version
+   You should see "BOURACKA-TESTPLAN-v0.4.3.xlsx" (or whichever version
    ships with this package).
 
 
 RUN IT
 ------
 
-       bouracka-ui
+       bouracka-ui --no-browser
 
-This starts the local server on http://127.0.0.1:8424/ and (by default)
-opens your default browser to the Run page automatically.
+This starts the local server on http://127.0.0.1:8424/. Open that URL in your
+browser. The `--no-browser` flag skips the auto-open (useful if you want to
+run the server in one window and use the browser separately).
 
 To stop the server: Ctrl+C in the PowerShell window. Close the browser tab
 when you're done.
 
+If port 8424 is already in use (because a previous bouracka-ui didn't shut
+down cleanly), run the bundled `kill-stragglers.ps1` first — see TROUBLESHOOTING.md §1.
 
-FIRST RUN — SANITY CHECK (TC-CP-A1-MAIN-DEMO)
----------------------------------------------
 
-1. With bouracka-ui running, open http://127.0.0.1:8424/ in your browser.
-2. On the "Run tests" page:
+FIRST RUN — SANITY CHECK (TC-CP-A1-MAIN-DEMO, MOCK MODE)
+--------------------------------------------------------
+Real-mode dispatch needs Cypress / Playwright / pytest+Selenium installed
+separately (typically via the automation-v0.5.4 package). For a quick first
+verification that the UI plumbing works, use mock mode:
+
+1. With the venv still active, in a NEW PowerShell window:
+
+       $env:BOURACKA_UI_DISPATCH_MODE = "mock"
+       cd C:\TestAutomationSite
+       .\.venv\Scripts\Activate.ps1
+       bouracka-ui --no-browser
+
+2. Open http://127.0.0.1:8424/ in your browser.
+
+3. On the "Run tests" page:
    - Environment: leave it on "ENV-DMO — Demo (demo.bouracka.cz)"
-   - Framework: pick "cypress only" if you have Cypress installed,
-                else leave on "all" — mock mode will produce fake results
-3. Scroll down, tick the TC named "TC-CP-A1-MAIN-DEMO" (it's near the top).
-4. Click the "Run selected" button.
-5. The Live log card appears below. Watch the lines as they stream.
-6. After ~30-60 s (real mode) or ~3 s (mock mode), you'll be auto-navigated
-   to the /results/<run_id> page showing the verdict matrix.
+   - Framework: leave on "all" (mock mode handles all frameworks)
 
-WHILE THE RUN IS IN FLIGHT, the results page will show a "running" pill +
-polling indicator. This is normal — it auto-refreshes every 2 s until the
-envelope is written. You can navigate away (Runs / Bugs / About) and come
-back via the Runs page later; the run continues in the background.
+4. Scroll down, tick "TC-CP-A1-MAIN-DEMO". Click "Run selected".
+
+5. After ~3 s the verdict matrix appears with synthetic results. UI plumbing
+   confirmed end-to-end.
+
+6. Stop the server with Ctrl+C. Remove the mock-mode override when you're
+   ready for real dispatch:
+
+       Remove-Item Env:BOURACKA_UI_DISPATCH_MODE
+
+
+REAL-MODE DISPATCH — pair with automation-v0.5.4
+-------------------------------------------------
+For real Cypress / Playwright / pytest+Selenium runs against bouracka.cz,
+you need the automation suite installed alongside this UI:
+
+   1. Unpack `bouracka-automation-v0.5.4.zip` (paired delivery) — it contains
+      `bouracka-tests-v0.5.4.zip` inside; unpack THAT too.
+   2. The result is a `bouracka-tests/` tree with `tools/`, `cypress/`,
+      `playwright/`, `selenium/`, fixtures, etc.
+   3. Run `bouracka-ui --no-browser` from inside that bouracka-tests tree
+      (the REPO_ROOT auto-detect walks up from CWD looking for
+      `tools/consolidate_results.py` — present in automation-v0.5.4).
+   4. If detection fails, override with:
+         $env:BOURACKA_UI_REPO_ROOT = "C:\path\to\bouracka-tests"
+
+Cypress and Playwright additionally need Node.js 18+ installed and:
+   npm install                       (from the automation-v0.5.4 root)
+   npx playwright install            (downloads playwright browsers)
 
 
 KNOWN ISSUES + FIXES
 --------------------
 
-→ If you see "Run not found: run-...." for more than ~90 s:
-  The dispatcher likely failed silently (e.g. Cypress not installed but
-  framework was set to "cypress only"). Check the log tail on the same page,
-  or use the /about page to see which tools are detected on PATH.
+→ pip install fails with "getaddrinfo failed" / "No matching distribution":
+  This means pip tried to reach PyPI. Make sure you used `--no-index`. The
+  air-gap install MUST use --no-index --find-links to work without internet.
+  Re-run step 4 with both flags.
 
-→ If "bouracka-ui" startup hits "[Errno 10048] error while attempting to
-  bind on address ('127.0.0.1', 8424)":
-  Another bouracka-ui process is still running. Use kill-stragglers.ps1
-  (bundled in this package) — see TROUBLESHOOTING.md for the exact recipe.
+→ pip install fails with "Could not find a version that satisfies the
+  requirement <something>; extra == 'standard'" or platform-tagged wheels
+  not found:
+  Python version mismatch. The ZIP's `-pyNNN` suffix doesn't match your local
+  Python. Confirm `python --version` and use the matching ZIP variant.
 
-→ If pip install fails with "Access Denied" on websockets/speedups.cp310...
-  or httptools/parser.cp310...":
-  Same root cause — a stale bouracka-ui process is holding the .pyd file.
-  Run kill-stragglers.ps1, then retry pip install.
+→ "Run not found: run-...." persists for >90 s:
+  Dispatcher likely failed silently. Check the log on the results page
+  (now shows 4 candidate causes) or use the /about page for tool availability.
 
-→ Anything else: open TROUBLESHOOTING.md.
+→ "[Errno 10048] error while attempting to bind on address ('127.0.0.1', 8424)":
+  Another bouracka-ui is still running. Use kill-stragglers.ps1 (bundled).
 
-
-WHAT'S NEXT
------------
-After your first successful smoke run, see OPERATOR-GUIDE.md for the
-day-to-day workflow (running test sets, filing bugs, exporting trace
-bundles, etc.).
+→ Anything else: open TROUBLESHOOTING.md, then DIAGNOSTICS-PLAYBOOK.md for
+  deeper diagnosis.
 
 
-PACKAGE CONTENTS
-----------------
-  bouracka_ui-0.1.0-py3-none-any.whl       The installable wheel
-  BOURACKA-TESTPLAN-v0.4.2.xlsx            Test workbook (data source)
+PACKAGE CONTENTS (v0.1.2)
+-------------------------
+  bouracka_ui-0.1.2-py3-none-any.whl       The installable wheel
+  wheelhouse/                              ~25-30 .whl files (all Python deps,
+                                           pre-downloaded for offline install)
+  BOURACKA-TESTPLAN-v0.4.3.xlsx            Test workbook (data source)
   INSTALL-HP-ELITE.txt                     This file
   OPERATOR-GUIDE.md                        Day-to-day operator workflow
-  TROUBLESHOOTING.md                       Failure-mode recipes
+  TROUBLESHOOTING.md                       Failure-mode recipes (incl. air-gap pip)
+  DIAGNOSTICS-PLAYBOOK.md                  System-level diagnostic + DELTA-REPORT
   kill-stragglers.ps1                      Cleanup helper for stuck processes
   SHA256SUMS.txt                           Checksums for integrity verification
 
@@ -159,8 +221,9 @@ PACKAGE CONTENTS
 CONTACT
 -------
 Pete (petr.yamyang@gmail.com) — author/maintainer
-Issues / bugs in the UI itself: file as BUG-BUI-NNN through the bugs page.
+Issues / bugs in the UI itself: file as BUG-BUI-NNN through the bugs page,
+                                 OR via DELTA-REPORT (see DIAGNOSTICS-PLAYBOOK §7).
 
 ================================================================================
-End of INSTALL-HP-ELITE.txt
+End of INSTALL-HP-ELITE.txt (v0.1.2, air-gap-ready)
 ================================================================================

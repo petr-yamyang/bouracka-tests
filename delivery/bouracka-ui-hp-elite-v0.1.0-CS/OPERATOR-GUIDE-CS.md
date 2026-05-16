@@ -133,7 +133,7 @@ Pokud se to stane, spusťte `kill-stragglers.ps1` (přibalený v balíčku). Rec
 C:\bouracka-ui\
 ├── .venv\                              ← virtual environment (nehrabat)
 ├── bouracka_ui-0.1.0-py3-none-any.whl  ← instalační wheel
-├── BOURACKA-TESTPLAN-v0.4.2.xlsx       ← workbook (datový zdroj: TC, prostředí, bugy)
+├── BOURACKA-TESTPLAN-v0.4.3.xlsx       ← workbook (datový zdroj: TC, prostředí, bugy)
 ├── runs\                               ← envelope JSON sem padají
 │   └── cross-framework-demo-2026-05-11.json
 ├── imported-bundles\                   ← trace bundly importované přes /runs
@@ -167,7 +167,15 @@ Hlavička má tlačítko **← Back** vlevo od odkazů na stránky. Používá v
 
 ## §10. Historie verzí
 
-- **v0.1.0** (2026-05-11) — první vydání. Obsahuje:
+- **v0.1.1** (2026-05-11 večer) — air-gap distribuce. Stejný UI kód jako v0.1.0. Pouze packaging iterace:
+  - Přibalený wheelhouse: všechny Python deps dodané jako předem-stažené wheely vedle hlavního wheelu
+  - Air-gap install recept: `pip install --no-index --find-links=.\wheelhouse <wheel>`
+  - Python-version-tagged ZIP filenames (`-py310` / `-py311` / `-py312`)
+  - INSTALL/TROUBLESHOOTING aktualizovány pro air-gap pattern + 4 zdokumentované pip-error varianty
+  - KB-042 lekce zachycena pro budoucí SUPIN-air-gapped Python deliverables
+  - requires-python posunuto 3.9 → 3.10 (odpovídá tomu, na čem skutečně testujeme)
+
+- **v0.1.0** (2026-05-11 ve dne) — první vydání. Obsahuje:
   - BUG-BUI-001: Windows NTFS filename safety pro run_id
   - BUG-BUI-002: 202 in-flight sémantika + UI polling (žádné přechodné „Run not found")
   - BUG-BUI-003: Karta Provenance dynamicky přejmenovaná na „Live log" / „Dispatch log" podle stavu

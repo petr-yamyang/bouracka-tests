@@ -133,7 +133,7 @@ If that does happen, run `kill-stragglers.ps1` (bundled with this package). See 
 C:\bouracka-ui\
 ├── .venv\                              ← virtual environment (don't touch)
 ├── bouracka_ui-0.1.0-py3-none-any.whl  ← the installable wheel
-├── BOURACKA-TESTPLAN-v0.4.2.xlsx       ← workbook (data source: TCs, envs, bugs)
+├── BOURACKA-TESTPLAN-v0.4.3.xlsx       ← workbook (data source: TCs, envs, bugs)
 ├── runs\                               ← envelope JSONs land here
 │   └── cross-framework-demo-2026-05-11.json
 ├── imported-bundles\                   ← trace bundles imported via /runs page
@@ -167,7 +167,15 @@ The header has a **← Back** button to the left of the page-nav links. It uses 
 
 ## §10. Version history
 
-- **v0.1.0** (2026-05-11) — first release. Includes:
+- **v0.1.1** (2026-05-11 evening) — air-gap distribution. Same UI code as v0.1.0. Packaging-only iteration:
+  - Bundled wheelhouse: all Python deps shipped as pre-downloaded wheels alongside the main wheel
+  - Air-gap install recipe: `pip install --no-index --find-links=.\wheelhouse <wheel>`
+  - Python-version-tagged ZIP filenames (`-py310` / `-py311` / `-py312`)
+  - INSTALL/TROUBLESHOOTING refreshed for air-gap pattern + 4 documented pip-error variants
+  - KB-042 lesson captured for future SUPIN-air-gapped Python deliverables
+  - requires-python bumped 3.9 → 3.10 (matches what we actually test on)
+
+- **v0.1.0** (2026-05-11 daytime) — first release. Includes:
   - BUG-BUI-001: Windows NTFS filename safety for run_ids
   - BUG-BUI-002: 202 in-flight semantics + UI polling (no transient "Run not found")
   - BUG-BUI-003: Provenance card dynamically retitled to "Live log" / "Dispatch log" by state

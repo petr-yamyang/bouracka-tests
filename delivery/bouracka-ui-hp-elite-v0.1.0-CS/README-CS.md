@@ -1,4 +1,4 @@
-# Bouračka UI v0.1.0 — distribuční balíček pro HP Elite (CS)
+# Bouračka UI v0.1.2 — distribuční balíček pro HP Elite (CS, Kate drop 2026-05-12)
 
 **Začněte tady:** otevřete soubor `INSTALL-HP-ELITE-CS.txt` a postupujte krok za krokem.
 
@@ -12,8 +12,9 @@
 | `DIAGNOSTICS-PLAYBOOK-CS.md` | Co kontrolovat, když nefunguje SYSTÉM kolem UI: network reachability, mock-vs-live delty integrací, drift katalog, pre-flight TST checklist, DELTA-REPORT šablona pro zpětné posílání nálezů | pro jakýkoli moment „tohle není zjevný UI bug" |
 | `kill-stragglers.ps1` | Pomocný skript: zabije zaseklé servery + vyčistí pip orphany | když to říká TROUBLESHOOTING |
 | `SHA256SUMS.txt` | Kontrolní součty pro ověření integrity | volitelně, před instalací na security-citlivém stroji |
-| `bouracka_ui-0.1.0-py3-none-any.whl` | Instalační wheel | odkazuje na něj INSTALL krok 3 |
-| `BOURACKA-TESTPLAN-v0.4.2.xlsx` | Testovací workbook (TC / prostředí / bugy) | používá ho UI; přímo neupravovat |
+| `bouracka_ui-0.1.2-py3-none-any.whl` | Instalační wheel | odkazuje na něj INSTALL krok 4 |
+| `wheelhouse/` | ~28 .whl souborů, předem stažené závislosti (air-gap install) | použito v INSTALL kroku 4 |
+| `BOURACKA-TESTPLAN-v0.4.3.xlsx` | Testovací workbook (TC / prostředí / bugy) — KP-reviewed primary | používá ho UI; přímo neupravovat |
 
 ## Rychlá kontrola po instalaci
 

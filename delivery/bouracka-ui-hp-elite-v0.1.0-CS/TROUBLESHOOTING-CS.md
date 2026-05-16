@@ -197,6 +197,88 @@ Obsahuje: server health, cestu workbooku + dostupnost nástrojů, info o OS, ned
 
 ---
 
+## §11. Selhání air-gap pip install (SUPIN HP Elite a podobné)
+
+**Symptom A — `getaddrinfo failed`:**
+
+```
+WARNING: Retrying ... Failed to establish a new connection: [Errno 11001] getaddrinfo failed
+ERROR: Could not find a version that satisfies the requirement fastapi>=0.110
+ERROR: No matching distribution found for fastapi>=0.110
+```
+
+**Proč:** instalační stroj nemá PyPI egress (SUPIN policy). Pip zkusil stáhnout FastAPI z internetu a dostal DNS-resolution failure.
+
+**Oprava:** instalace MUSÍ použít `--no-index --find-links=<wheelhouse-cesta>`. Přečtěte si znovu INSTALL-HP-ELITE-CS.txt §4. Konkrétní příkaz:
+
+```powershell
+pip install --no-index `
+  --find-links="C:\TestAutomationSite\wheelhouse" `
+  "C:\TestAutomationSite\bouracka_ui-0.1.1-py3-none-any.whl"
+```
+
+Parametr `--no-index` je to, co dělá tuto instalaci air-gap-safe. Bez něj pip pořád zkusí PyPI, i když lokální wheely existují.
+
+---
+
+**Symptom B — `Could not find a version ... ; extra == "standard"`:**
+
+```
+ERROR: Could not find a version that satisfies the requirement httptools>=0.6.3; extra == "standard"
+```
+
+**Proč:** wheelhouse postrádá wheely pro volitelné extras. pip <24 spolehlivě nesleduje `uvicorn[standard]` extras z metadata lokálního wheelu. Wheelhouse byl postaven bez explicitního výčtu.
+
+**Oprava:** přestavte wheelhouse na ThinkPadu s explicitním enumerated extras:
+
+```powershell
+pip download -d wheelhouse `
+  --platform win_amd64 --python-version 312 --only-binary=:all: `
+  dist\bouracka_ui-0.1.1-py3-none-any.whl `
+  "uvicorn[standard]>=0.27" `
+  "pytest>=8.0" `
+  "pytest-json-report>=1.5"
+```
+
+Packager skript `delivery/package-hp-elite-v0.1.0.ps1` to ve v0.1.1+ dělá automaticky.
+
+---
+
+**Symptom C — `cp310-cp310-win_amd64.whl` se neinstaluje:**
+
+**Proč:** wheelhouse obsahuje cp310 wheely (Python 3.10 ABI), ale cílový stroj má jinou Python verzi. C-extension wheely (httptools, watchfiles, websockets, pyyaml, pydantic-core) jsou ABI-locked.
+
+**Oprava:** zkontrolujte `python --version` na cíli. Spárujte sufix `-pyNNN` ZIPu s ním:
+
+```powershell
+python --version
+# Python 3.12.10  →  použijte bouracka-ui-hp-elite-v0.1.1-CS-py312.zip
+# Python 3.11.x   →  použijte ...-py311.zip
+# Python 3.10.x   →  použijte ...-py310.zip
+```
+
+Pokud máte špatný wheelhouse, požádejte Peta, aby přestavěl na ThinkPadu:
+
+```powershell
+.\delivery\package-hp-elite-v0.1.0.ps1 -PythonVersion 312
+```
+
+---
+
+**Symptom D — `WARNING: Location '.\wheelhouse' is ignored ... lacks a specific scheme`:**
+
+**Proč:** pip na některých Windows konfigurací spolehlivě nerozliší `.\wheelhouse` jako lokální-adresářový `--find-links` cíl.
+
+**Oprava:** použijte ABSOLUTNÍ cestu. Vždy:
+
+```powershell
+pip install --no-index --find-links="C:\TestAutomationSite\wheelhouse" "C:\TestAutomationSite\bouracka_ui-0.1.1-py3-none-any.whl"
+```
+
+(viz KB-042 pro plnou lekci o air-gap Python packaging quirks)
+
+---
+
 ## Příloha A — Známá omezení
 
 - **v0.1.0** dodává MOCK fallback, když nástroje chybí — to je úmyslné, ale znamená, že můžete mít zelenou výsledkovou stránku bez toho, aby skutečně běžel jakýkoli prohlížeč. Zkontrolujte `/about` pro potvrzení real-mode dispatche.
