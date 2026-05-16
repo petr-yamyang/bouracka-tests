@@ -161,14 +161,28 @@
     <tbody><tr><td colspan="6" class="loading">Loading…</td></tr></tbody>
   </table>
 
-  <!-- New-bug form (toggled hidden/shown) -->
-  <div class="card" id="bug-form" style="display:none; margin-top: var(--sp-6);">
-    <h2>+ New Bug</h2>
+  <!-- Bug form (toggled hidden/shown) — used for BOTH "+ New Bug" and "Edit bug".
+       The form's mode is held in dataset.mode on #bug-form: "create" | "edit".
+       In "edit" mode, dataset.code holds the bug code being edited. -->
+  <div class="card" id="bug-form" style="display:none; margin-top: var(--sp-6);" data-mode="create">
+    <h2 id="bf-heading">+ New Bug</h2>
     <div class="form-row">
       <label for="bf-name">Title (English)</label>
       <input id="bf-name" type="text" placeholder="Short descriptive title">
     </div>
     <div class="form-grid">
+      <div class="form-row">
+        <label for="bf-status">Status</label>
+        <select id="bf-status">
+          <option value="open" selected>open</option>
+          <option value="investigating">investigating</option>
+          <option value="fixed">fixed (awaits retest)</option>
+          <option value="verified-fixed">verified-fixed</option>
+          <option value="reopened">reopened</option>
+          <option value="closed">closed</option>
+          <option value="wontfix">wontfix</option>
+        </select>
+      </div>
       <div class="form-row">
         <label for="bf-severity">Severity</label>
         <select id="bf-severity">
@@ -178,10 +192,30 @@
           <option value="X">X — undefined</option>
         </select>
       </div>
+    </div>
+    <div class="form-grid">
       <div class="form-row">
-        <label for="bf-env">Env where present</label>
-        <select id="bf-env"><option>(loading…)</option></select>
+        <label for="bf-urgency">Urgency</label>
+        <select id="bf-urgency">
+          <option value="A">A — immediate</option>
+          <option value="B" selected>B — soon</option>
+          <option value="C">C — eventual</option>
+          <option value="X">X — undefined</option>
+        </select>
       </div>
+      <div class="form-row">
+        <label for="bf-priority">Priority</label>
+        <select id="bf-priority">
+          <option value="P1-critical">P1 — critical</option>
+          <option value="P2-high">P2 — high</option>
+          <option value="P3-medium" selected>P3 — medium</option>
+          <option value="P4-low">P4 — low</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label for="bf-env">Env where present</label>
+      <select id="bf-env"><option>(loading…)</option></select>
     </div>
     <div class="form-row">
       <label for="bf-tc">Linked TC code (optional)</label>
@@ -203,7 +237,19 @@
     </div>
     <button id="bf-submit" class="primary">File bug</button>
     <button id="bf-cancel">Cancel</button>
+    <button id="bf-retest" style="display:none; margin-left:var(--sp-2);" title="Trigger a re-run of the linked TC; on result, you confirm verified-fixed or reopen">↻ Retest linked TC</button>
     <span id="bf-msg" style="margin-left: var(--sp-3);"></span>
+  </div>
+
+  <!-- Retest result banner — shown after a retest run completes, awaits operator
+       confirmation per conservative retest UX (2026-05-13). -->
+  <div class="card" id="retest-result-banner" style="display:none; margin-top: var(--sp-6); border-left: 4px solid var(--c-accent, #3b82f6);">
+    <h2 id="rr-heading">Retest result</h2>
+    <div id="rr-body"></div>
+    <button id="rr-verify" class="primary" style="display:none;">✓ Mark verified-fixed</button>
+    <button id="rr-reopen" style="display:none;">↺ Reopen bug</button>
+    <button id="rr-keep" style="margin-left:var(--sp-2);">Keep as-is</button>
+    <a id="rr-run-link" href="#" style="margin-left:var(--sp-2);">View run details</a>
   </div>
 </template>
 

@@ -304,6 +304,127 @@ async function renderRunsList() {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// Results-page helpers (F-01..F-06 from TES-GAP-ANALYSIS v0.1.3)
+// ──────────────────────────────────────────────────────────────────────────
+
+// F-06: toggle the per-TC drill-down detail row (accordion)
+function toggleTcDetail(tcCode) {
+  const detail = document.querySelector(`tr.tc-detail[data-tc="${CSS.escape(tcCode)}"]`);
+  if (!detail) return;
+  detail.style.display = (detail.style.display === 'none' || !detail.style.display) ? '' : 'none';
+}
+window.toggleTcDetail = toggleTcDetail;
+
+// F-04: client-side filter on the verdict matrix
+function applyMatrixFilter(filterKind) {
+  const rows = document.querySelectorAll('#results-matrix tbody tr.tc-row');
+  rows.forEach(row => {
+    let show = true;
+    if (filterKind === 'fail')    show = row.dataset.hasFail === '1';
+    if (filterKind === 'skip')    show = row.dataset.allSkip === '1';
+    if (filterKind === 'diverge') show = row.dataset.parity === 'divergence';
+    // 'all' = show everything
+    row.style.display = show ? '' : 'none';
+    // Hide the corresponding detail row too if its parent is hidden
+    const detail = row.nextElementSibling;
+    if (detail && detail.classList.contains('tc-detail')) {
+      if (!show) detail.style.display = 'none';
+      // If showing the parent, leave detail at whatever state user toggled it to
+      // (keeps user's drill-down choices stable across filter changes)
+    }
+  });
+}
+window.applyMatrixFilter = applyMatrixFilter;
+
+// F-04: client-side sort of the verdict matrix
+function applyMatrixSort(sortKey) {
+  const tbody = document.querySelector('#results-matrix tbody');
+  if (!tbody) return;
+  // Capture rows as pairs (tc-row, tc-detail) so detail follows its parent.
+  const pairs = [];
+  let current = null;
+  tbody.querySelectorAll('tr').forEach(tr => {
+    if (tr.classList.contains('tc-row')) {
+      if (current) pairs.push(current);
+      current = { row: tr, detail: null };
+    } else if (tr.classList.contains('tc-detail') && current) {
+      current.detail = tr;
+    }
+  });
+  if (current) pairs.push(current);
+
+  pairs.sort((a, b) => {
+    if (sortKey === 'tc') {
+      return a.row.dataset.tc.localeCompare(b.row.dataset.tc);
+    }
+    if (sortKey === 'verdict') {
+      // Failures first (data-has-fail=1), then skips, then everything else.
+      const score = (r) => (r.dataset.hasFail === '1' ? 0 : (r.dataset.allSkip === '1' ? 2 : 1));
+      const sa = score(a.row), sb = score(b.row);
+      if (sa !== sb) return sa - sb;
+      return a.row.dataset.tc.localeCompare(b.row.dataset.tc);
+    }
+    if (sortKey === 'parity') {
+      // divergence first, then not-applicable, then agree.
+      const order = { 'divergence': 0, 'not-applicable': 1, 'agree': 2 };
+      const oa = order[a.row.dataset.parity] ?? 9;
+      const ob = order[b.row.dataset.parity] ?? 9;
+      if (oa !== ob) return oa - ob;
+      return a.row.dataset.tc.localeCompare(b.row.dataset.tc);
+    }
+    return 0;
+  });
+
+  // Re-attach in sorted order
+  const frag = document.createDocumentFragment();
+  pairs.forEach(p => {
+    frag.appendChild(p.row);
+    if (p.detail) frag.appendChild(p.detail);
+  });
+  tbody.appendChild(frag);
+}
+window.applyMatrixSort = applyMatrixSort;
+
+// F-02: copy an evidence path to clipboard so the operator can open the file
+// via file explorer. v0.1.4 plans to wire a streaming endpoint.
+function copyEvidencePath(ev) {
+  ev.preventDefault();
+  const path = ev.currentTarget.dataset.path;
+  if (!path) return;
+  // Try modern clipboard API; fall back to a textarea trick if unavailable.
+  try {
+    navigator.clipboard.writeText(path).then(() => {
+      _flashCopyToast(ev.currentTarget, 'copied: ' + path);
+    }, () => {
+      _legacyCopy(path, ev.currentTarget);
+    });
+  } catch (_) {
+    _legacyCopy(path, ev.currentTarget);
+  }
+}
+window.copyEvidencePath = copyEvidencePath;
+
+function _legacyCopy(text, anchor) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); _flashCopyToast(anchor, 'copied: ' + text); }
+  catch (_) { _flashCopyToast(anchor, 'copy failed'); }
+  document.body.removeChild(ta);
+}
+
+function _flashCopyToast(anchor, msg) {
+  const toast = document.createElement('div');
+  toast.textContent = msg;
+  toast.style.cssText = 'position:fixed; bottom: 1em; right: 1em; padding: 0.5em 1em; background: var(--c-ink-2, #1f2937); color: white; border-radius: 4px; font-size: var(--fs-sm); z-index: 9999;';
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 1800);
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 // /results/:rid page
 // ──────────────────────────────────────────────────────────────────────────
 // Module-level poller handle so navigation away stops the loop cleanly.
@@ -445,46 +566,185 @@ function renderResultsFullEnvelope(rid, env) {
     </p>
   `;
 
-  // Verdict matrix
+  // Verdict matrix — F-01..F-04, F-06 from TES-GAP-ANALYSIS v0.1.3
   const fws = env.frameworks;
+
+  // F-04: Filter/sort toolbar above the matrix
+  // (Inserted into the matrix card so it stays visually grouped)
+  let toolbar = $('#matrix-toolbar');
+  if (!toolbar) {
+    toolbar = document.createElement('div');
+    toolbar.id = 'matrix-toolbar';
+    toolbar.className = 'filter-row';
+    toolbar.style.marginBottom = 'var(--sp-2)';
+    const matrixHeader = matrixCard.querySelector('h2');
+    if (matrixHeader) matrixHeader.insertAdjacentElement('afterend', toolbar);
+    else matrixCard.insertBefore(toolbar, matrixCard.firstChild);
+  }
+  toolbar.innerHTML = `
+    <span style="color: var(--c-ink-3); font-size: var(--fs-sm);">Filter:</span>
+    <button class="matrix-filter active" data-filter="all">All (${env.results.length})</button>
+    <button class="matrix-filter" data-filter="fail">Failures (${env.results.filter(r => anyFailed(r)).length})</button>
+    <button class="matrix-filter" data-filter="skip">Skips (${env.results.filter(r => Object.values(r.verdicts).every(v => v === 'skip-drift' || v === 'skip-other' || v === 'missing')).length})</button>
+    <button class="matrix-filter" data-filter="diverge">Divergence (${env.results.filter(r => r.parity_status === 'divergence').length})</button>
+    <span style="margin-left: auto; color: var(--c-ink-3); font-size: var(--fs-sm);">Sort:</span>
+    <select id="matrix-sort">
+      <option value="tc">by TC code</option>
+      <option value="verdict">by verdict (failures first)</option>
+      <option value="parity">by parity</option>
+    </select>
+  `;
+
+  // F-01 + F-03: cell tooltip with per-fw duration + error message
+  // F-02: evidence icons per cell (📷 screenshot, 🎥 video, 📦 trace)
+  function cellHtml(r, f) {
+    const v = r.verdicts[f] || 'missing';
+    const dur = (r.duration_ms || {})[f];
+    const err = (r.error_messages || {})[f];
+    const ev = (r.evidence || {})[f] || {};
+    const tooltipBits = [];
+    if (dur != null) tooltipBits.push(`${f}: ${dur} ms`);
+    if (err) tooltipBits.push(`error: ${err.slice(0, 200)}`);
+    const tooltip = tooltipBits.length ? ` title="${escapeHtml(tooltipBits.join('\n'))}"` : '';
+    // Evidence icons (F-02) — click copies path to clipboard for now;
+    // v0.1.4 will wire a /api/runs/{rid}/evidence/{fw}/{kind} endpoint.
+    const evIcons = [];
+    if (ev.screenshot_ref) evIcons.push(`<a href="#" class="ev-icon" title="screenshot: ${escapeHtml(ev.screenshot_ref)}" data-path="${escapeHtml(ev.screenshot_ref)}" onclick="copyEvidencePath(event)">&#128247;</a>`);
+    if (ev.video_ref) evIcons.push(`<a href="#" class="ev-icon" title="video: ${escapeHtml(ev.video_ref)}" data-path="${escapeHtml(ev.video_ref)}" onclick="copyEvidencePath(event)">&#127909;</a>`);
+    if (ev.trace_ref) evIcons.push(`<a href="#" class="ev-icon" title="trace: ${escapeHtml(ev.trace_ref)}" data-path="${escapeHtml(ev.trace_ref)}" onclick="copyEvidencePath(event)">&#128230;</a>`);
+    return `<td${tooltip}><span class="pill verdict-${v}">${v}</span> ${evIcons.join(' ')}</td>`;
+  }
+
+  // F-06: per-TC drill-down accordion — each TC row gets a hidden detail row
+  // beneath it; click TC code to toggle.
+  function detailRowHtml(r) {
+    const detailParts = [];
+    if (r.covered_tt && r.covered_tt.length) {
+      detailParts.push(`<div><strong>Covered TestTargets:</strong> ${r.covered_tt.map(t => `<code>${escapeHtml(t)}</code>`).join(', ')}</div>`);
+    }
+    if (r.viewport) detailParts.push(`<div><strong>Viewport:</strong> <code>${escapeHtml(r.viewport)}</code></div>`);
+    if (r.bug_ref) detailParts.push(`<div><strong>Linked bug:</strong> <code>${escapeHtml(r.bug_ref)}</code></div>`);
+    if (r.soft_pass_reason) detailParts.push(`<div><strong>Soft-pass reason:</strong> ${escapeHtml(r.soft_pass_reason)}</div>`);
+    // Per-fw breakdown
+    detailParts.push('<div style="margin-top: var(--sp-2);"><strong>Per-framework detail:</strong></div>');
+    const fwRows = fws.map(f => {
+      const v = r.verdicts[f] || 'missing';
+      const dur = (r.duration_ms || {})[f];
+      const note = (r.framework_specific_notes || {})[f];
+      const err = (r.error_messages || {})[f];
+      const ev = (r.evidence || {})[f] || {};
+      const evList = [];
+      if (ev.screenshot_ref) evList.push(`screenshot: <code>${escapeHtml(ev.screenshot_ref)}</code>`);
+      if (ev.video_ref) evList.push(`video: <code>${escapeHtml(ev.video_ref)}</code>`);
+      if (ev.trace_ref) evList.push(`trace: <code>${escapeHtml(ev.trace_ref)}</code>`);
+      return `
+        <div style="margin-left: var(--sp-3); margin-top: 0.3em; padding: 0.3em 0.5em; background: var(--c-ink-6, #f9fafb); border-left: 2px solid var(--c-ink-5, #e5e7eb);">
+          <strong>${escapeHtml(f)}</strong>:
+          <span class="pill verdict-${v}">${v}</span>
+          ${dur != null ? `<span style="color: var(--c-ink-3); font-size: var(--fs-sm);">${dur} ms</span>` : ''}
+          ${note ? `<br><small>raw: <code>${escapeHtml(note)}</code></small>` : ''}
+          ${err ? `<div style="margin-top: 0.3em; padding: 0.4em; background: var(--c-fail-bg, #fee2e2); border-left: 2px solid var(--c-fail, #ef4444); font-family: var(--f-mono); font-size: var(--fs-sm); white-space: pre-wrap; max-height: 200px; overflow:auto;">${escapeHtml(err)}</div>` : ''}
+          ${evList.length ? `<div style="margin-top: 0.3em; font-size: var(--fs-sm);">${evList.join(' &middot; ')}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+    detailParts.push(fwRows);
+    return `<tr class="tc-detail" data-tc="${escapeHtml(r.tc_code)}" style="display:none;">
+      <td colspan="${fws.length + 3}" style="background: var(--c-ink-6, #f9fafb); padding: var(--sp-3);">
+        ${detailParts.join('')}
+      </td>
+    </tr>`;
+  }
+
   $('#results-matrix thead').innerHTML = `<tr>
     <th>TC</th>
-    ${fws.map(f => `<th>${f}</th>`).join('')}
+    ${fws.map(f => `<th>${escapeHtml(f)}</th>`).join('')}
     <th>Parity</th>
     <th>File bug</th>
   </tr>`;
   $('#results-matrix tbody').innerHTML = env.results.map(r => `
-    <tr>
-      <td><code>${r.tc_code}</code></td>
-      ${fws.map(f => {
-        const v = r.verdicts[f] || 'missing';
-        return `<td><span class="pill verdict-${v}">${v}</span></td>`;
-      }).join('')}
+    <tr class="tc-row" data-tc="${escapeHtml(r.tc_code)}" data-has-fail="${anyFailed(r) ? '1' : '0'}" data-all-skip="${Object.values(r.verdicts).every(v => v === 'skip-drift' || v === 'skip-other' || v === 'missing') ? '1' : '0'}" data-parity="${escapeHtml(r.parity_status)}">
+      <td><code class="tc-code-clickable" style="cursor: pointer; text-decoration: underline dotted;" onclick="toggleTcDetail('${escapeHtml(r.tc_code)}')" title="Click to expand detail">${escapeHtml(r.tc_code)}</code></td>
+      ${fws.map(f => cellHtml(r, f)).join('')}
       <td><span class="pill parity-${r.parity_status}">${r.parity_status}</span></td>
-      <td>${anyFailed(r) ? `<a href="#/bugs?tc=${r.tc_code}&run=${env.run_id}" onclick="sessionStorage.setItem('bug-prefill', JSON.stringify({tc:'${r.tc_code}',run:'${env.run_id}',env:'${env.env}'}))">+ bug</a>` : ''}</td>
+      <td>${anyFailed(r) ? `<a href="#/bugs?tc=${r.tc_code}&run=${env.run_id}" onclick="sessionStorage.setItem('bug-prefill', JSON.stringify({tc:'${r.tc_code}',run:'${env.run_id}',env:'${env.env}',error:${JSON.stringify(Object.entries(r.error_messages||{}).filter(([k,v])=>v).map(([k,v])=>k+': '+v).join('\\n'))}}))">+ bug</a>` : ''}</td>
     </tr>
+    ${detailRowHtml(r)}
   `).join('');
 
-  // Drift forensic
+  // Wire filter buttons + sort dropdown (F-04)
+  $$('.matrix-filter', toolbar).forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('.matrix-filter', toolbar).forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      applyMatrixFilter(btn.dataset.filter);
+    });
+  });
+  $('#matrix-sort').addEventListener('change', (e) => applyMatrixSort(e.target.value));
+
+  // Drift forensic — F-05 enriched card
   if (env.drift_forensic && env.drift_forensic.active) {
     $('#results-drift').style.display = '';
     const df = env.drift_forensic;
+    // Drift-type narrative templates (F-05)
+    const driftNarratives = {
+      'recaptcha-v3': 'Score-based bot detection on demo/tst-demo environments. SPA routes traversing POST /api/reports trigger 403 responses without correlation context. Resolves at Cíl-2 baseline (tst.demo with bypass token).',
+      'recaptcha-v2': 'Challenge-based bot detection. Requires manual CAPTCHA solving; not automatable. SKIP via drift guard until bypass token is provisioned.',
+      'rate-limit': 'Per-IP request quota exceeded. SUPIN-internal IPs typically have higher quotas; verify your tester laptop is on SUPIN VPN if drift persists.',
+      'ipc-114-renderer-kill': 'BUG-CY-001 — Chromium renderer process killed via bad_message reason 114 on Cypress headed-mode launch. Affects same-origin SPA tests that establish persistent connections. Workaround: use Selenium for affected ALT-* tests until BUG-CY-001 Round-5 fix lands.',
+      'same-origin-pool': 'HTTP connection-pool exhaustion on same-origin persistent connections. Symptoms include test timeouts after first successful navigation. Related to BUG-CY-001 hypothesis.',
+      'other-401-403': 'Authentication rejection drift. Verify test credentials are current and the env has not rotated its auth provider.',
+    };
+    const narrative = driftNarratives[df.drift_type] || '<em>(no narrative for this drift type yet)</em>';
     $('#results-drift-body').innerHTML = `
-      <p><strong>Type:</strong> <code>${df.drift_type}</code></p>
-      <p><strong>Affected TCs:</strong> ${df.affected_tcs.map(t => `<code>${t}</code>`).join(', ')}</p>
-      <p><strong>Notes:</strong> ${df.notes || ''}</p>
-      ${df.trigger_correlation ? `<p><strong>Correlation:</strong> <code>${df.trigger_correlation}</code></p>` : ''}
+      <div style="display: grid; grid-template-columns: max-content 1fr; gap: 0.4em 1em; margin-bottom: var(--sp-3);">
+        <strong>Type:</strong>           <code>${escapeHtml(df.drift_type)}</code>
+        <strong>Guard policy:</strong>   <code>${escapeHtml(df.guard_policy || 'skip-on-drift')}</code>
+        <strong>Affected TCs:</strong>   <span>${df.affected_tcs.map(t => `<code>${escapeHtml(t)}</code>`).join(', ')} <small style="color: var(--c-ink-3);">(${df.affected_tcs.length})</small></span>
+        ${df.trigger_correlation ? `<strong>Correlation:</strong>    <code style="word-break: break-all;">${escapeHtml(df.trigger_correlation)}</code>` : ''}
+        <strong>Notes:</strong>          <span>${escapeHtml(df.notes || '')}</span>
+      </div>
+      <div style="padding: var(--sp-2); background: var(--c-warn-bg, #fef3c7); border-left: 3px solid var(--c-warn, #f59e0b);">
+        <strong>About this drift type:</strong> ${narrative}
+      </div>
     `;
+  } else {
+    $('#results-drift').style.display = 'none';
   }
 
-  // Provenance
+  // Provenance — grouped sections (F-09 from TES-GAP-ANALYSIS 2026-05-12 night).
+  // Three groups: Schema · Host · Reporter. tool_versions rendered when present
+  // (B-04 forward-compat).
+  const tv = (env.host && env.host.tool_versions) || null;
+  const tvLines = tv
+    ? Object.entries(tv).map(([k, v]) => `${k}: ${v}`).join(' &middot; ')
+    : '(not captured)';
+  const parseWarnings = env.parse_warnings || [];   // B-08 forward-compat
+  const warningsBlock = parseWarnings.length > 0
+    ? `<div style="margin-top: 0.5em; padding: 0.5em; background: var(--c-warn-bg, #fef3c7); border-left: 3px solid var(--c-warn, #f59e0b);">
+         <strong>Parse warnings (${parseWarnings.length}):</strong><br>
+         ${parseWarnings.map(w => `<code style="display:block; font-size:.85em;">${escapeHtml(w)}</code>`).join('')}
+       </div>`
+    : '';
   $('#results-provenance').innerHTML = `
-    schema_version: ${env.schema_version}<br>
-    host: ${env.host.os} on ${env.host.host}<br>
-    git: ${env.host.git_branch || '?'} @ ${env.host.git_commit || '?'}<br>
-    reporter: ${env.reporter.command}<br>
-    trigger: ${env.reporter.trigger}<br>
-    operator: ${env.reporter.operator || '?'}
+    <div class="prov-group">
+      <strong>Schema</strong><br>
+      version: <code>${env.schema_version}</code>
+    </div>
+    <div class="prov-group" style="margin-top: 0.6em;">
+      <strong>Host</strong><br>
+      <code>${env.host.os}</code> on <code>${env.host.host}</code><br>
+      git: <code>${env.host.git_branch || '?'}</code> @ <code>${env.host.git_commit || '?'}</code><br>
+      tools: <small>${tvLines}</small>
+    </div>
+    <div class="prov-group" style="margin-top: 0.6em;">
+      <strong>Reporter</strong><br>
+      command: <code>${escapeHtml(env.reporter.command)}</code><br>
+      trigger: <code>${env.reporter.trigger}</code> &nbsp;
+      operator: <code>${env.reporter.operator || '?'}</code>
+      ${env.reporter.ci_run_id ? `<br>ci_run_id: <code>${escapeHtml(env.reporter.ci_run_id)}</code>` : ''}
+    </div>
+    ${warningsBlock}
   `;
 }
 
@@ -497,6 +757,13 @@ function anyFailed(r) {
 // ──────────────────────────────────────────────────────────────────────────
 async function renderBugs() {
   renderTemplate('tpl-bugs');
+
+  // Cache envs once for the form dropdown reuse
+  let envCache = null;
+  async function getEnvs() {
+    if (!envCache) envCache = await api('/api/envs');
+    return envCache;
+  }
 
   async function load() {
     const status = $('#bugs-status').value;
@@ -511,45 +778,111 @@ async function renderBugs() {
       tbody.innerHTML = '<tr><td colspan="6" class="empty">No bugs match the filter.</td></tr>';
       return;
     }
+    // Bug rows are clickable — opens the edit form (v0.1.3 Block 2).
     tbody.innerHTML = rows.map(b => `
-      <tr>
-        <td><code>${b.code}</code></td>
+      <tr class="bug-row" style="cursor:pointer;" data-code="${escapeHtml(b.code)}" title="Click to edit / retest">
+        <td><code>${escapeHtml(b.code)}</code></td>
         <td><span class="pill sev-${b.severity || 'X'}">${b.severity || '?'}</span></td>
         <td><span class="pill status-${b.status || 'open'}">${b.status || 'open'}</span></td>
-        <td>${b.name_en || b.name_cs || ''}</td>
-        <td><code>${b.env_where_present || ''}</code></td>
-        <td>${b.linked_tc_ref ? `<code>${b.linked_tc_ref}</code>` : ''}</td>
+        <td>${escapeHtml(b.name_en || b.name_cs || '')}</td>
+        <td><code>${escapeHtml(b.env_where_present || '')}</code></td>
+        <td>${b.linked_tc_ref ? `<code>${escapeHtml(b.linked_tc_ref)}</code>` : ''}</td>
       </tr>
     `).join('');
+    // Wire row clicks → edit
+    $$('.bug-row', tbody).forEach(row => {
+      row.addEventListener('click', () => openEditForm(row.dataset.code));
+    });
   }
 
   $('#bugs-status').addEventListener('change', load);
   $('#bugs-severity').addEventListener('change', load);
   $('#bugs-refresh').addEventListener('click', load);
 
-  // New bug form
   const form = $('#bug-form');
+
+  // ── Open form in CREATE mode ─────────────────────────────────────────
   $('#bugs-new').addEventListener('click', async () => {
     form.style.display = '';
-    // Pre-fill from sessionStorage if user came from a failed result row
+    form.dataset.mode = 'create';
+    form.dataset.code = '';
+    $('#bf-heading').textContent = '+ New Bug';
+    $('#bf-submit').textContent = 'File bug';
+    $('#bf-retest').style.display = 'none';
+    // Reset all fields
+    $('#bf-name').value = '';
+    $('#bf-status').value = 'open';
+    $('#bf-severity').value = 'B';
+    $('#bf-urgency').value = 'B';
+    $('#bf-priority').value = 'P3-medium';
+    $('#bf-tc').value = '';
+    $('#bf-repro').value = '';
+    $('#bf-expected').value = '';
+    $('#bf-actual').value = '';
+    $('#bf-msg').textContent = '';
+    // Prefill from sessionStorage if user came from a failed result row
     const prefill = sessionStorage.getItem('bug-prefill');
     if (prefill) {
       const p = JSON.parse(prefill);
       $('#bf-tc').value = p.tc || '';
+      if (p.error) $('#bf-actual').value = p.error;
       sessionStorage.removeItem('bug-prefill');
     }
-    // Populate env dropdown
-    const envs = await api('/api/envs');
+    const envs = await getEnvs();
     $('#bf-env').innerHTML = envs.map(e =>
       `<option value="${e.code}">${e.code} — ${e.name_en}</option>`
     ).join('');
   });
-  $('#bf-cancel').addEventListener('click', () => { form.style.display = 'none'; $('#bf-msg').textContent = ''; });
 
+  // ── Open form in EDIT mode (called when bug row is clicked) ───────────
+  async function openEditForm(code) {
+    form.style.display = '';
+    form.dataset.mode = 'edit';
+    form.dataset.code = code;
+    $('#bf-heading').innerHTML = `Edit bug <code>${escapeHtml(code)}</code>`;
+    $('#bf-submit').textContent = 'Save changes';
+    $('#bf-msg').textContent = 'loading…';
+    try {
+      const bug = await api(`/api/bugs/${encodeURIComponent(code)}`);
+      const envs = await getEnvs();
+      $('#bf-env').innerHTML = envs.map(e =>
+        `<option value="${e.code}" ${e.code === bug.env_where_present ? 'selected' : ''}>${e.code} — ${e.name_en}</option>`
+      ).join('');
+      $('#bf-name').value = bug.name_en || bug.name_cs || '';
+      $('#bf-status').value = bug.status || 'open';
+      $('#bf-severity').value = bug.severity || 'B';
+      $('#bf-urgency').value = bug.urgency || 'B';
+      $('#bf-priority').value = bug.priority || 'P3-medium';
+      $('#bf-tc').value = bug.linked_tc_ref || '';
+      $('#bf-repro').value = bug.repro_steps || '';
+      $('#bf-expected').value = bug.expected || '';
+      $('#bf-actual').value = bug.actual || '';
+      $('#bf-msg').textContent = '';
+      // Show retest button if there's a linked TC and status is anywhere
+      // workflow-relevant (open / investigating / fixed / reopened).
+      const retestable = bug.linked_tc_ref &&
+        ['open', 'investigating', 'fixed', 'reopened'].includes(bug.status || 'open');
+      $('#bf-retest').style.display = retestable ? '' : 'none';
+      $('#bf-retest').dataset.code = code;
+      $('#bf-retest').dataset.tc = bug.linked_tc_ref || '';
+    } catch (e) {
+      $('#bf-msg').innerHTML = `<span class="pill verdict-fail">${escapeHtml(e.message)}</span>`;
+    }
+  }
+
+  $('#bf-cancel').addEventListener('click', () => {
+    form.style.display = 'none';
+    $('#bf-msg').textContent = '';
+  });
+
+  // ── Submit (create or update depending on mode) ───────────────────────
   $('#bf-submit').addEventListener('click', async () => {
     const body = {
       name_en: $('#bf-name').value,
+      status: $('#bf-status').value,
       severity: $('#bf-severity').value,
+      urgency: $('#bf-urgency').value,
+      priority: $('#bf-priority').value,
       env_where_present: $('#bf-env').value,
       linked_tc_ref: $('#bf-tc').value || null,
       repro_steps: $('#bf-repro').value,
@@ -560,13 +893,131 @@ async function renderBugs() {
       $('#bf-msg').innerHTML = '<span class="pill verdict-fail">title required</span>';
       return;
     }
+    const mode = form.dataset.mode || 'create';
+    const code = form.dataset.code || '';
     try {
-      const resp = await api('/api/bugs', { method: 'POST', body: JSON.stringify(body) });
-      $('#bf-msg').innerHTML = `<span class="pill verdict-pass">filed: ${resp.code}</span>`;
+      if (mode === 'edit') {
+        await api(`/api/bugs/${encodeURIComponent(code)}`,
+                  { method: 'PUT', body: JSON.stringify(body) });
+        $('#bf-msg').innerHTML = `<span class="pill verdict-pass">updated: ${escapeHtml(code)}</span>`;
+      } else {
+        const resp = await api('/api/bugs',
+                               { method: 'POST', body: JSON.stringify(body) });
+        $('#bf-msg').innerHTML = `<span class="pill verdict-pass">filed: ${escapeHtml(resp.code)}</span>`;
+      }
       setTimeout(() => { form.style.display = 'none'; $('#bf-msg').textContent = ''; load(); }, 1200);
     } catch (e) {
-      $('#bf-msg').innerHTML = `<span class="pill verdict-fail">${e.message}</span>`;
+      $('#bf-msg').innerHTML = `<span class="pill verdict-fail">${escapeHtml(e.message)}</span>`;
     }
+  });
+
+  // ── Retest workflow (conservative — operator confirms status change) ──
+  $('#bf-retest').addEventListener('click', async () => {
+    const code = $('#bf-retest').dataset.code;
+    const tc = $('#bf-retest').dataset.tc;
+    if (!code || !tc) return;
+    $('#bf-msg').innerHTML = `<span class="pill verdict-skip-other">launching retest…</span>`;
+    try {
+      const resp = await api(`/api/bugs/${encodeURIComponent(code)}/retest`,
+                             { method: 'POST', body: '{}' });
+      $('#bf-msg').innerHTML =
+        `<span class="pill verdict-pass">retest launched: <code>${escapeHtml(resp.run_id)}</code></span>`;
+      // Poll the run; on completion, show the retest-result banner.
+      _watchRetest(code, tc, resp.run_id);
+    } catch (e) {
+      $('#bf-msg').innerHTML = `<span class="pill verdict-fail">${escapeHtml(e.message)}</span>`;
+    }
+  });
+
+  function _watchRetest(bugCode, tcCode, runId) {
+    const banner = $('#retest-result-banner');
+    banner.style.display = '';
+    $('#rr-heading').innerHTML =
+      `Retest in progress for <code>${escapeHtml(bugCode)}</code> (TC: <code>${escapeHtml(tcCode)}</code>)`;
+    $('#rr-body').innerHTML = `Run <code>${escapeHtml(runId)}</code> dispatched. Watching for completion…`;
+    $('#rr-verify').style.display = 'none';
+    $('#rr-reopen').style.display = 'none';
+    $('#rr-run-link').href = `#/results/${runId}`;
+
+    let attempts = 0;
+    const maxAttempts = 90;   // 90 * 2s = 3 min
+    const poll = setInterval(async () => {
+      attempts++;
+      try {
+        const env = await api(`/api/runs/${encodeURIComponent(runId)}`);
+        // The full envelope has `results[]` once consolidation finishes.
+        if (env && env.results && Array.isArray(env.results)) {
+          clearInterval(poll);
+          _renderRetestResult(bugCode, tcCode, runId, env);
+        }
+      } catch (_) { /* keep polling */ }
+      if (attempts >= maxAttempts) {
+        clearInterval(poll);
+        $('#rr-body').innerHTML =
+          `Retest did not complete within 3 minutes. <a href="#/results/${runId}">Check the run page</a> for status.`;
+      }
+    }, 2000);
+  }
+
+  function _renderRetestResult(bugCode, tcCode, runId, env) {
+    const r = (env.results || []).find(x => x.tc_code === tcCode);
+    if (!r) {
+      $('#rr-body').innerHTML =
+        `Run completed but the TC <code>${escapeHtml(tcCode)}</code> was not found in the result set. <a href="#/results/${runId}">View run</a>.`;
+      return;
+    }
+    const verdicts = Object.values(r.verdicts || {}).filter(v => v !== 'missing');
+    const allPass = verdicts.length > 0 && verdicts.every(v => v === 'pass' || v === 'soft-pass');
+    const anyFail = verdicts.some(v => v === 'fail' || v === 'error');
+    let summary = '';
+    if (allPass) {
+      summary = `<span class="pill verdict-pass">retest PASSED</span> — the TC now passes across ${verdicts.length} framework(s).`;
+    } else if (anyFail) {
+      summary = `<span class="pill verdict-fail">retest FAILED</span> — the TC still fails. Verdicts: ${verdicts.join(', ')}.`;
+    } else {
+      summary = `<span class="pill verdict-skip-drift">retest SKIPPED</span> — TC was skipped (drift?). Verdicts: ${verdicts.join(', ')}.`;
+    }
+    $('#rr-heading').innerHTML =
+      `Retest result for <code>${escapeHtml(bugCode)}</code>`;
+    $('#rr-body').innerHTML = `
+      ${summary}<br>
+      <small style="color: var(--c-ink-3);">Per conservative-retest policy you confirm the status change manually.</small>
+    `;
+    // Conservative: show whichever confirmation matches the verdict
+    if (allPass) $('#rr-verify').style.display = '';
+    if (anyFail) $('#rr-reopen').style.display = '';
+  }
+
+  $('#rr-verify').addEventListener('click', async () => {
+    const code = form.dataset.code;
+    if (!code) return;
+    try {
+      await api(`/api/bugs/${encodeURIComponent(code)}`,
+                { method: 'PUT', body: JSON.stringify({ status: 'verified-fixed' }) });
+      $('#retest-result-banner').style.display = 'none';
+      load();
+    } catch (e) {
+      $('#rr-body').insertAdjacentHTML('beforeend',
+        `<br><span class="pill verdict-fail">status flip failed: ${escapeHtml(e.message)}</span>`);
+    }
+  });
+
+  $('#rr-reopen').addEventListener('click', async () => {
+    const code = form.dataset.code;
+    if (!code) return;
+    try {
+      await api(`/api/bugs/${encodeURIComponent(code)}`,
+                { method: 'PUT', body: JSON.stringify({ status: 'reopened' }) });
+      $('#retest-result-banner').style.display = 'none';
+      load();
+    } catch (e) {
+      $('#rr-body').insertAdjacentHTML('beforeend',
+        `<br><span class="pill verdict-fail">status flip failed: ${escapeHtml(e.message)}</span>`);
+    }
+  });
+
+  $('#rr-keep').addEventListener('click', () => {
+    $('#retest-result-banner').style.display = 'none';
   });
 
   load();

@@ -12,6 +12,20 @@ import time
 import webbrowser
 from pathlib import Path
 
+# v0.1.4 — force stdout/stderr to UTF-8 so non-ASCII characters in our
+# startup banner don't crash Python on Czech Windows (cp1250 default
+# console encoding) when stdout is redirected to a file via Start-Process
+# -RedirectStandardOutput. Without this, `print('⚠ …')` raises
+# UnicodeEncodeError and the process dies before uvicorn binds the port —
+# verified on Pete's ThinkPad 2026-05-13.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    # Python < 3.7 or non-text stream — best-effort; we ASCII-ify the
+    # specific prints below as the belt-and-suspenders fallback.
+    pass
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
@@ -40,7 +54,28 @@ def main(argv: list[str] | None = None) -> int:
 
     url = f"http://{args.host}:{args.port}/"
     print(f"[bouracka-ui] starting on {url}")
-    print(f"[bouracka-ui] workbook: {os.environ.get('BOURACKA_UI_WORKBOOK', 'auto-detect')}")
+
+    # BUG-K-003 fix (2026-05-13 Kate Round-1): make the workbook path Kate
+    # actually opens VERY visible at startup. Previously the resolved workbook
+    # path lived only in /api/health → /about page; testers who didn't check
+    # /about could open the wrong file and think their bugs vanished.
+    #
+    # We pre-resolve here (best-effort) so the message shows the actual file
+    # the server will use, not just "auto-detect". If pre-resolution fails
+    # (e.g., import-time dependency), we fall back to the env-var hint.
+    workbook_msg = os.environ.get('BOURACKA_UI_WORKBOOK')
+    if not workbook_msg:
+        try:
+            # Late import to avoid circular at module top
+            from .server import WORKBOOK_PATH, REPO_ROOT
+            workbook_msg = str(WORKBOOK_PATH)
+            print(f"[bouracka-ui] repo root:  {REPO_ROOT}")
+        except Exception:
+            workbook_msg = "(auto-detect at server startup)"
+    print(f"[bouracka-ui] workbook:   {workbook_msg}")
+    # ASCII-only for cp1250 safety even after the UTF-8 reconfigure above.
+    print(f"[bouracka-ui] WARNING: open ONLY this workbook in Excel for bug review;")
+    print(f"[bouracka-ui]          other BOURACKA-TESTPLAN-*.xlsx copies are reference only.")
     print(f"[bouracka-ui] press Ctrl+C to stop.")
 
     if not args.no_browser:
